@@ -154,7 +154,7 @@ export function MainMenu({ onClose }: MainMenuProps) {
       
       <div className="filter-section">
         <h3>App Version</h3>
-        <p style={{ margin: 0 }}>v1.3.1 stable</p>
+        <p style={{ margin: 0 }}>v1.3.3 stable</p>
       </div>
 
       <div className="filter-section">
