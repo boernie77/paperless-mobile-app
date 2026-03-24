@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'preact/hooks';
-import { apiSignal } from '../store.ts';
+import { apiSignal, filterSignal } from '../store.ts';
 import { db } from '../db.ts';
 import { Thumbnail } from './Thumbnail.tsx';
 import { DocumentViewer } from './DocumentViewer.tsx';
@@ -13,7 +13,10 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
   const [tags, setTags] = useState<Record<number, string>>({});
   const [correspondents, setCorrespondents] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
+  
+  // UI States
   const [search, setSearch] = useState('');
+  const [ordering, setOrdering] = useState('-created');
   const [selectedDoc, setSelectedDoc] = useState<any>(null);
 
   useEffect(() => {
@@ -41,6 +44,7 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
 
           await db.documentTypes.bulkPut(typeRes.results);
         } else {
+          // offline fallback
           const offlineTags = await db.tags.toArray();
           const tagMap: Record<number, string> = {};
           offlineTags.forEach((t: any) => tagMap[t.id] = t.name);
@@ -63,19 +67,34 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
             .map(k => parseInt(k));
           offlineDocs = offlineDocs.filter(d => d.tags?.some((t: number) => inboxTagIds.includes(t)));
         }
+        
+        // apply simple offline sorting
+        offlineDocs.sort((a,b) => {
+          if (ordering === '-created') return new Date(b.created).getTime() - new Date(a.created).getTime();
+          if (ordering === 'created') return new Date(a.created).getTime() - new Date(b.created).getTime();
+          if (ordering === '-added') return new Date(b.added).getTime() - new Date(a.added).getTime();
+          if (ordering === 'added') return new Date(a.added).getTime() - new Date(b.added).getTime();
+          if (ordering === 'title') return a.title.localeCompare(b.title);
+          if (ordering === '-title') return b.title.localeCompare(a.title);
+          return 0;
+        });
+
         setDocs(offlineDocs);
         setLoading(false);
         return;
       }
       
       try {
-        const params: Record<string, string> = {};
+        // Collect query parameters
+        const params: Record<string, string> = { ...filterSignal.value };
         if (inboxOnly) params.tags__name__iexact = 'inbox';
+        params.ordering = ordering;
         
         const result = await api.getDocuments(params);
         const onlineDocs = result.results;
         
-        if (!inboxOnly) {
+        if (!inboxOnly && Object.keys(filterSignal.value).length === 0) {
+           // only update offline cache if no specific advanced filters are active to avoid sparse databases
            await db.documents.bulkPut(onlineDocs.map((d: any) => ({ ...d, blob: undefined })));
         }
         
@@ -89,7 +108,7 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
     };
     
     fetchData();
-  }, [apiSignal.value, inboxOnly]);
+  }, [apiSignal.value, inboxOnly, filterSignal.value, ordering]);
 
   const toggleOffline = async (doc: any) => {
     const api = apiSignal.value;
@@ -119,12 +138,26 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
 
   return (
     <div className="document-container">
-      <div className="search-bar">
+      <div className="search-bar" style={{ display: 'flex', gap: '0.5rem' }}>
         <input 
           type="search" 
-          placeholder="Titel, Inhalt oder Korrespondent suchen..." 
+          placeholder="Suchen..." 
           onInput={(e) => setSearch((e.target as HTMLInputElement).value)}
+          style={{ flex: 1 }}
         />
+        <select 
+          value={ordering} 
+          onChange={(e) => setOrdering((e.target as HTMLSelectElement).value)}
+          className="filter-input"
+          style={{ width: 'auto', background: 'var(--surface)', cursor: 'pointer', padding: '0.8rem 0.5rem' }}
+        >
+          <option value="-created">Neueste (Ausgestellt)</option>
+          <option value="created">Älteste (Ausgestellt)</option>
+          <option value="-added">Zuletzt Hinzugefügt</option>
+          <option value="added">Zuerst Hinzugefügt</option>
+          <option value="title">Titel (A-Z)</option>
+          <option value="-title">Titel (Z-A)</option>
+        </select>
       </div>
       
       <div className="document-list">

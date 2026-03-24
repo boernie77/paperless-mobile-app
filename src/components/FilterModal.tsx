@@ -14,9 +14,12 @@ export function FilterModal({ onClose }: { onClose: () => void }) {
   const [dateFrom, setDateFrom] = useState(currentFilters.created__date__gte || '');
   const [dateTo, setDateTo] = useState(currentFilters.created__date__lte || '');
 
-  // Sub-Modal state for correspondent
+  // Sub-Modal states
   const [showCorrSelect, setShowCorrSelect] = useState(false);
   const [corrSearch, setCorrSearch] = useState('');
+  
+  const [showTypeSelect, setShowTypeSelect] = useState(false);
+  const [typeSearch, setTypeSearch] = useState('');
 
   useEffect(() => {
     db.correspondents.toArray().then(setCorrespondents);
@@ -84,6 +87,50 @@ export function FilterModal({ onClose }: { onClose: () => void }) {
     );
   }
 
+  // Document Type Sub-Modal Render
+  if (showTypeSelect) {
+    const filteredTypes = docTypes.filter(c => c.name.toLowerCase().includes(typeSearch.toLowerCase())).sort((a,b) => a.name.localeCompare(b.name));
+    
+    return (
+      <div className="modal-overlay">
+        <div className="filter-modal">
+          <div className="modal-header">
+            <button className="text-button" onClick={() => setShowTypeSelect(false)}>Zurück</button>
+            <h2 style={{ fontSize: '1.2rem' }}>Dokumententyp ausw.</h2>
+            <div style={{ width: '40px' }}></div>
+          </div>
+          <input 
+            type="search" 
+            placeholder="Typ suchen..." 
+            value={typeSearch}
+            onInput={(e) => setTypeSearch((e.target as HTMLInputElement).value)}
+            className="filter-input"
+            autoFocus
+          />
+          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <button 
+              className="menu-button" 
+              onClick={() => { setSelectedType(''); setShowTypeSelect(false); }}
+              style={{ justifyContent: 'space-between', padding: '0.8rem' }}
+            >
+              Alle {selectedType === '' && '✓'}
+            </button>
+            {filteredTypes.map(c => (
+              <button 
+                key={c.id} 
+                className="menu-button" 
+                onClick={() => { setSelectedType(c.id); setShowTypeSelect(false); }}
+                style={{ justifyContent: 'space-between', padding: '0.8rem' }}
+              >
+                {c.name} {selectedType === c.id && '✓'}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Normal Filter Modal
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -108,16 +155,15 @@ export function FilterModal({ onClose }: { onClose: () => void }) {
 
         <div className="filter-section">
           <h3>Dokumententyp</h3>
-          <select 
-            value={selectedType} 
-            onChange={e => setSelectedType(Number((e.target as HTMLSelectElement).value) || '')}
-            className="filter-input"
+          <button 
+            type="button"
+            className="filter-input" 
+            style={{ textAlign: 'left', background: 'var(--surface)', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+            onClick={() => setShowTypeSelect(true)}
           >
-            <option value="">Alle</option>
-            {docTypes.map(d => (
-              <option key={d.id} value={d.id}>{d.name}</option>
-            ))}
-          </select>
+            <span>{selectedType ? docTypes.find(d => d.id === selectedType)?.name || 'Unbekannt' : 'Alle'}</span>
+            <span style={{opacity: 0.5}}>▼</span>
+          </button>
         </div>
 
         <div className="filter-section">
