@@ -61,7 +61,7 @@ export function Login() {
             <label>Server URL</label>
             <input 
               type="text" 
-              placeholder="z.B. paper.bernauer24.com" 
+              placeholder="z.B. paperless.example.com" 
               value={url}
               onInput={(e) => setUrl((e.target as HTMLInputElement).value)}
             />
