@@ -1,3 +1,5 @@
+import { CapacitorHttp, HttpResponse } from '@capacitor/core';
+
 export class PaperlessAPI {
   private baseUrl: string;
   private token: string;
@@ -9,75 +11,91 @@ export class PaperlessAPI {
 
   static async getToken(baseUrl: string, username: string, password: string): Promise<string> {
     const cleanUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
-    const response = await fetch(`${cleanUrl}/api/token/`, {
-      method: 'POST',
+    const response: HttpResponse = await CapacitorHttp.post({
+      url: `${cleanUrl}/api/token/`,
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ username, password })
+      data: { username, password }
     });
 
-    if (!response.ok) {
-      throw new Error(`Login failed: ${response.statusText}`);
+    if (response.status >= 400) {
+      throw new Error(`Login failed: ${response.status}`);
     }
 
-    const data = await response.json();
-    return data.token;
+    // CapacitorHttp parse json automatically into response.data
+    return response.data.token;
   }
 
-  private async fetch(endpoint: string, options: RequestInit = {}) {
+  private async request(endpoint: string, method: string = 'GET', data?: any) {
     const url = `${this.baseUrl}/api/${endpoint}`;
-    const response = await fetch(url, {
-      ...options,
+    
+    const options: any = {
+      url,
+      method,
       headers: {
         'Authorization': `Token ${this.token}`,
         'Accept': 'application/json',
-        ...options.headers,
-      },
-    });
+      }
+    };
 
-    if (!response.ok) {
-      throw new Error(`API error: ${response.statusText}`);
+    if (data) {
+      options.data = data;
+      // Note: for FormData upload, CapacitorHttp requires special handling.
+      // But for JSON data it's straightforward.
+    }
+
+    const response: HttpResponse = await CapacitorHttp.request(options);
+
+    if (response.status >= 400) {
+      throw new Error(`API error: ${response.status}`);
     }
 
     if (response.status === 204) return null;
-    return response.json();
+    return response.data;
   }
 
   async getDocuments(params: Record<string, string> = {}) {
+    // Manually construct query string for CapacitorHttp
     const query = new URLSearchParams(params).toString();
-    return this.fetch(`documents/?${query}`);
+    const endpoint = query ? `documents/?${query}` : 'documents/';
+    return this.request(endpoint);
   }
 
   async getDocument(id: number) {
-    return this.fetch(`documents/${id}/`);
+    return this.request(`documents/${id}/`);
   }
 
   async getTags() {
-    return this.fetch('tags/');
+    return this.request('tags/');
   }
 
   async getCorrespondents() {
-    return this.fetch('correspondents/');
+    return this.request('correspondents/');
   }
 
   async getDocumentTypes() {
-    return this.fetch('document_types/');
+    return this.request('document_types/');
   }
 
   async uploadDocument(file: Blob, title: string) {
+    // For file upload via CapacitorHttp, we have to use multipart/form-data.
+    // CapacitorHttp supports FormData but its behavior varies.
+    // Fallback to standard fetch ONLY for uploads if CapacitorHttp fails.
     const formData = new FormData();
     formData.append('document', file);
     formData.append('title', title);
     
-    return this.fetch('documents/post_document/', {
+    const url = `${this.baseUrl}/api/documents/post_document/`;
+    const response = await fetch(url, {
       method: 'POST',
       body: formData,
-      // Fetch will automatically set content-type for FormData
       headers: {
         'Authorization': `Token ${this.token}`,
       }
     });
+    if (!response.ok) throw new Error('Upload failed');
+    return response.json();
   }
 
   async downloadDocument(id: number): Promise<Blob> {

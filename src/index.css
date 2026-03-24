@@ -102,6 +102,27 @@ input:focus {
 
 .error-message { color: var(--error); font-size: 0.85rem; margin-top: 1rem; text-align: center; }
 
+.divider {
+  text-align: center;
+  margin: 1rem 0;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  position: relative;
+}
+.divider::before, .divider::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 35%;
+  height: 1px;
+  background: var(--glass-border);
+}
+.divider::before { left: 0; }
+.divider::after { right: 0; }
+
+
 .header-top {
   display: flex;
   justify-content: space-between;
