@@ -134,6 +134,7 @@ export function MainMenu({ onClose }: MainMenuProps) {
         <h3>Lizenzen</h3>
         <p style={{ margin: 0, fontSize: '0.85rem', lineHeight: '1.4' }}>
           Diese App basiert auf Open-Source-Software:<br/>
+          • Paperless-ngx Logo (GPLv3)<br/>
           • Preact & Signals (MIT)<br/>
           • Capacitor (MIT) & Plugins (MIT/ISC)<br/>
           • PDF.js (Apache 2.0)<br/>
