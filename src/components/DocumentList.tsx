@@ -18,6 +18,7 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
   const [search, setSearch] = useState('');
   const [ordering, setOrdering] = useState('-created');
   const [selectedDoc, setSelectedDoc] = useState<any>(null);
+  const [showSortModal, setShowSortModal] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -145,19 +146,13 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
           onInput={(e) => setSearch((e.target as HTMLInputElement).value)}
           style={{ flex: 1 }}
         />
-        <select 
-          value={ordering} 
-          onChange={(e) => setOrdering((e.target as HTMLSelectElement).value)}
+        <button 
+          onClick={() => setShowSortModal(true)}
           className="filter-input"
-          style={{ width: 'auto', background: 'var(--surface)', cursor: 'pointer', padding: '0.8rem 0.5rem' }}
+          style={{ width: 'auto', background: 'var(--surface)', cursor: 'pointer', padding: '0.8rem 0.6rem', display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap' }}
         >
-          <option value="-created">Neueste (Ausgestellt)</option>
-          <option value="created">Älteste (Ausgestellt)</option>
-          <option value="-added">Zuletzt Hinzugefügt</option>
-          <option value="added">Zuerst Hinzugefügt</option>
-          <option value="title">Titel (A-Z)</option>
-          <option value="-title">Titel (Z-A)</option>
-        </select>
+          <span>⇅ Sortieren</span>
+        </button>
       </div>
       
       <div className="document-list">
@@ -194,6 +189,38 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
           ))
         )}
       </div>
+
+      {showSortModal && (
+        <div className="modal-overlay" onClick={() => setShowSortModal(false)}>
+          <div className="filter-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <button className="header-button" onClick={() => setShowSortModal(false)}>← Zurück</button>
+              <h2 style={{ fontSize: '1.2rem' }}>Sortieren nach</h2>
+              <div style={{ width: '40px' }}></div>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <button className="menu-button" onClick={() => { setOrdering('-created'); setShowSortModal(false); }} style={{ justifyContent: 'space-between', padding: '1rem' }}>
+                Neueste (Ausgestellt) {ordering === '-created' && '✓'}
+              </button>
+              <button className="menu-button" onClick={() => { setOrdering('created'); setShowSortModal(false); }} style={{ justifyContent: 'space-between', padding: '1rem' }}>
+                Älteste (Ausgestellt) {ordering === 'created' && '✓'}
+              </button>
+              <button className="menu-button" onClick={() => { setOrdering('-added'); setShowSortModal(false); }} style={{ justifyContent: 'space-between', padding: '1rem' }}>
+                Zuletzt Hinzugefügt {ordering === '-added' && '✓'}
+              </button>
+              <button className="menu-button" onClick={() => { setOrdering('added'); setShowSortModal(false); }} style={{ justifyContent: 'space-between', padding: '1rem' }}>
+                Zuerst Hinzugefügt {ordering === 'added' && '✓'}
+              </button>
+              <button className="menu-button" onClick={() => { setOrdering('title'); setShowSortModal(false); }} style={{ justifyContent: 'space-between', padding: '1rem' }}>
+                Titel (A-Z) {ordering === 'title' && '✓'}
+              </button>
+              <button className="menu-button" onClick={() => { setOrdering('-title'); setShowSortModal(false); }} style={{ justifyContent: 'space-between', padding: '1rem' }}>
+                Titel (Z-A) {ordering === '-title' && '✓'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
