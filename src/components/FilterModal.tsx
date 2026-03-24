@@ -176,8 +176,8 @@ export function FilterModal({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="filter-actions">
-          <button onClick={clearFilters} className="secondary-button">Zurücksetzen</button>
-          <button onClick={handleApply} className="primary-button">Anwenden</button>
+          <button onClick={clearFilters} className="btn secondary-button">Zurücksetzen</button>
+          <button onClick={handleApply} className="btn primary-button">Anwenden</button>
         </div>
       </div>
     </div>

@@ -103,7 +103,7 @@ export function Login() {
           
           {error && <p className="error-message">{error}</p>}
           
-          <button type="submit" className="primary-button" disabled={loading}>
+          <button type="submit" className="btn primary-button" style={{ width: '100%', marginTop: '1.5rem' }} disabled={loading}>
             {loading ? 'Prüfe Daten...' : 'Anmelden'}
           </button>
         </form>
