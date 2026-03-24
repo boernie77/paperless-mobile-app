@@ -1,11 +1,11 @@
 :root {
-  --primary: #6366f1;
-  --secondary: #a855f7;
-  --background: #0f172a;
+  --primary: #2563eb;
+  --secondary: #3b82f6;
+  --background: #0b1120;
   --surface: rgba(30, 41, 59, 0.7);
   --text: #f8fafc;
   --text-dim: #94a3b8;
-  --accent: #22d3ee;
+  --accent: #38bdf8;
   --error: #ef4444;
   --glass: rgba(255, 255, 255, 0.05);
   --glass-border: rgba(255, 255, 255, 0.1);
@@ -243,6 +243,7 @@ input:focus {
 
 header {
   padding: 1.5rem;
+  padding-top: max(1.5rem, env(safe-area-inset-top));
   border-bottom: 1px solid var(--glass-border);
   background: var(--surface);
   backdrop-filter: blur(10px);
@@ -439,4 +440,55 @@ main { flex: 1; padding: 1rem; }
 .icon-button { background: none; border: none; color: var(--text); padding: 0.5rem; cursor: pointer; display: flex; align-items: center; border-radius: 50%; }
 .icon-button:active { background: rgba(255, 255, 255, 0.1); }
 .doc-corr { color: #cbd5e1; font-weight: 600; }
+
+.header-button {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.1rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.5rem 0.5rem 0;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  transition: background 0.2s, color 0.2s;
+}
+.close-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.secondary-button {
+  flex: 1;
+  background: var(--surface);
+  color: white;
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 1rem;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.secondary-button:active { background: rgba(255, 255, 255, 0.1); }
+
+.viewer-header {
+  padding-top: max(1rem, env(safe-area-inset-top));
+}
+.modal-header {
+  padding-top: env(safe-area-inset-top);
+}
 

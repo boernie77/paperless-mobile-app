@@ -51,8 +51,8 @@ export function FilterModal({ onClose }: { onClose: () => void }) {
       <div className="modal-overlay">
         <div className="filter-modal">
           <div className="modal-header">
-            <button className="text-button" onClick={() => setShowCorrSelect(false)}>Zurück</button>
-            <h2 style={{ fontSize: '1.2rem' }}>Korrespondent ausw.</h2>
+            <button className="header-button" onClick={() => setShowCorrSelect(false)}>← Zurück</button>
+            <h2 style={{ fontSize: '1.2rem' }}>Korrespondent</h2>
             <div style={{ width: '40px' }}></div>
           </div>
           <input 
@@ -95,8 +95,8 @@ export function FilterModal({ onClose }: { onClose: () => void }) {
       <div className="modal-overlay">
         <div className="filter-modal">
           <div className="modal-header">
-            <button className="text-button" onClick={() => setShowTypeSelect(false)}>Zurück</button>
-            <h2 style={{ fontSize: '1.2rem' }}>Dokumententyp ausw.</h2>
+            <button className="header-button" onClick={() => setShowTypeSelect(false)}>← Zurück</button>
+            <h2 style={{ fontSize: '1.2rem' }}>Dokumententyp</h2>
             <div style={{ width: '40px' }}></div>
           </div>
           <input 
@@ -137,7 +137,7 @@ export function FilterModal({ onClose }: { onClose: () => void }) {
       <div className="filter-modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h2>Suche & Filter</h2>
-          <button className="text-button" onClick={onClose}>✕</button>
+          <button className="close-button" onClick={onClose}>✕</button>
         </div>
 
         <div className="filter-section">
@@ -176,7 +176,7 @@ export function FilterModal({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="filter-actions">
-          <button onClick={clearFilters} className="text-button">Zurücksetzen</button>
+          <button onClick={clearFilters} className="secondary-button">Zurücksetzen</button>
           <button onClick={handleApply} className="primary-button">Anwenden</button>
         </div>
       </div>

@@ -3,6 +3,7 @@ import { apiSignal } from '../store.ts';
 
 import * as pdfjsLib from 'pdfjs-dist';
 // Vite specific import logic for worker
+// @ts-ignore
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.mjs?url';
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
@@ -53,7 +54,7 @@ export function DocumentViewer({ document, onClose }: DocumentViewerProps) {
           
           container.appendChild(canvas);
           
-          const renderContext = {
+          const renderContext: any = {
             canvasContext: canvas.getContext('2d')!,
             viewport: viewport
           };
@@ -109,7 +110,7 @@ export function DocumentViewer({ document, onClose }: DocumentViewerProps) {
   return (
     <div className="viewer-modal">
       <div className="viewer-header">
-        <button className="text-button" onClick={onClose}>← Zurück</button>
+        <button className="header-button" onClick={onClose}>← Zurück</button>
         <span className="viewer-title">{document.title}</span>
       </div>
       <div className="viewer-content" style={{ flexDirection: 'column', backgroundColor: '#f1f5f9', overflowY: 'auto', padding: '1rem', alignItems: 'center', justifyContent: 'flex-start' }}>

@@ -125,7 +125,7 @@ export function MainMenu({ onClose }: MainMenuProps) {
       <div className="main-menu" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h2>Menü</h2>
-          <button className="text-button" onClick={onClose} disabled={uploading || downloading}>✕</button>
+          <button className="close-button" onClick={onClose} disabled={uploading || downloading}>✕</button>
         </div>
 
         <div className="menu-items">
