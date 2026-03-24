@@ -8,6 +8,7 @@ interface MainMenuProps {
 }
 
 export function MainMenu({ onClose }: MainMenuProps) {
+  const [view, setView] = useState<'menu' | 'about'>('menu');
   const [status, setStatus] = useState('');
   const [uploading, setUploading] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -120,29 +121,71 @@ export function MainMenu({ onClose }: MainMenuProps) {
     }
   };
 
+  const renderAbout = () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', animation: 'fadeIn 0.3s' }}>
+      <button className="header-button" onClick={() => setView('menu')}>← Zurück</button>
+      
+      <div className="filter-section">
+        <h3>App Version</h3>
+        <p style={{ margin: 0 }}>v1.3.0 stable</p>
+      </div>
+
+      <div className="filter-section">
+        <h3>Lizenzen</h3>
+        <p style={{ margin: 0, fontSize: '0.85rem', lineHeight: '1.4' }}>
+          Diese App basiert auf Open-Source-Software:<br/>
+          • Preact & Signals (MIT)<br/>
+          • Capacitor (MIT)<br/>
+          • PDF.js (Apache 2.0)<br/>
+          • Dexie.js (Apache 2.0)<br/>
+          • Lucide Icons (ISC)
+        </p>
+      </div>
+
+      <div className="filter-section">
+        <h3>Rechtliche Hinweise</h3>
+        <p style={{ margin: 0, fontSize: '0.85rem', lineHeight: '1.4' }}>
+          Dies ist ein Drittanbieter-Interface für Paperless-ngx. Paperless-ngx unterliegt der GPL-3.0 Lizenz. Keine Zugehörigkeit zum offiziellen Paperless-ngx Team.
+        </p>
+      </div>
+
+      <div className="filter-section">
+        <h3>Impressum</h3>
+        <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.6 }}>
+          Hier kannst du dein Impressum hinterlegen. Gemäß § 5 TMG sind diese Angaben für geschäftsmäßige Dienste in Deutschland verpflichtend.
+        </p>
+      </div>
+    </div>
+  );
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="main-menu" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>Menü</h2>
+          <h2>{view === 'menu' ? 'Menü' : 'Über & Lizenzen'}</h2>
           <button className="close-button" onClick={onClose} disabled={uploading || downloading}>✕</button>
         </div>
 
-        <div className="menu-items">
-          <button className="menu-button" onClick={takePhoto} disabled={uploading || downloading}>
-            <span className="icon">📷</span> Foto aufnehmen
-          </button>
-          <button className="menu-button" onClick={importFile} disabled={uploading || downloading}>
-            <span className="icon">📄</span> Datei importieren
-          </button>
-          <hr className="menu-divider" />
-          <div className="menu-info-block">
-            <button className="menu-button" onClick={downloadAll} disabled={uploading || downloading}>
-              <span className="icon">☁️</span> Alle offline verfügbar machen
+        {view === 'menu' ? (
+          <div className="menu-items">
+            <button className="menu-button" onClick={takePhoto} disabled={uploading || downloading}>
+              <span className="icon">📷</span> Foto aufnehmen
             </button>
-            <p className="menu-hint">Hinweis: Dies erfordert insgesamt ca. {estimatedSizeMb !== null ? estimatedSizeMb : '?'} MB Speicherplatz auf deinem Gerät.</p>
+            <button className="menu-button" onClick={importFile} disabled={uploading || downloading}>
+              <span className="icon">📄</span> Datei importieren
+            </button>
+            <hr className="menu-divider" />
+            <div className="menu-info-block">
+              <button className="menu-button" onClick={downloadAll} disabled={uploading || downloading}>
+                <span className="icon">☁️</span> Alle offline verfügbar machen
+              </button>
+              <p className="menu-hint">Hinweis: Dies erfordert insgesamt ca. {estimatedSizeMb !== null ? estimatedSizeMb : '?'} MB Speicherplatz auf deinem Gerät.</p>
+            </div>
+            <button className="menu-button" onClick={() => setView('about')} style={{ marginTop: 'auto', opacity: 0.7 }}>
+              <span className="icon">ℹ️</span> Über & Lizenzen
+            </button>
           </div>
-        </div>
+        ) : renderAbout()}
         
         {status && (
           <div className="menu-status-bar">
