@@ -138,7 +138,7 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
             await db.documents.bulkPut(onlineDocs.map((d: any) => ({ ...d, blob: undefined })));
         }
         
-        setDocs(onlineDocs);
+        setDocs(applyLocalFilters(onlineDocs));
       } catch (err) {
         console.error('Fetch failed, showing filtered offline docs', err);
         let offlineDocs = await db.documents.toArray();
@@ -185,20 +185,36 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
 
   return (
     <div className="document-container">
-      <div className="search-bar" style={{ display: 'flex', gap: '0.5rem' }}>
-        <input 
-          type="search" 
-          placeholder="Suchen..." 
-          onInput={(e) => setSearch((e.target as HTMLInputElement).value)}
-          style={{ flex: 1 }}
-        />
-        <button 
-          onClick={() => setShowSortModal(true)}
-          className="filter-input"
-          style={{ width: 'auto', background: 'var(--surface)', cursor: 'pointer', padding: '0.8rem 0.6rem', display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap' }}
-        >
-          <span>⇅ Sortieren</span>
-        </button>
+      <div className="search-bar" style={{ display: 'flex', gap: '0.5rem', flexDirection: 'column' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', width: '100%' }}>
+          <input 
+            type="search" 
+            placeholder="Suchen..." 
+            onInput={(e) => setSearch((e.target as HTMLInputElement).value)}
+            style={{ flex: 1 }}
+          />
+          <button 
+            onClick={() => setShowSortModal(true)}
+            className="filter-input"
+            style={{ width: 'auto', background: 'var(--surface)', cursor: 'pointer', padding: '0.8rem 0.6rem', display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap' }}
+          >
+            <span>⇅</span>
+          </button>
+        </div>
+        
+        {Object.keys(filterSignal.value).length > 0 && (
+          <div className="active-filters-row" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '-0.25rem', marginBottom: '0.25rem' }}>
+            <span className="tag-pill" style={{ background: 'var(--primary)', color: 'white', fontWeight: 'bold' }}>
+              Filter aktiv
+            </span>
+            <button 
+              onClick={() => { filterSignal.value = {}; }} 
+              style={{ background: 'none', border: 'none', color: 'var(--primary)', padding: '0', fontSize: '0.9rem', cursor: 'pointer', textDecoration: 'underline' }}
+            >
+              Alle Filter löschen
+            </button>
+          </div>
+        )}
       </div>
       
       <div className="document-list">
