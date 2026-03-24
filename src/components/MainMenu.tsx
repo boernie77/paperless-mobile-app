@@ -122,7 +122,7 @@ export function MainMenu({ onClose }: MainMenuProps) {
   };
 
   const renderAbout = () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', animation: 'fadeIn 0.3s' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', animation: 'fadeIn 0.3s', paddingBottom: '2rem' }}>
       <button className="header-button" onClick={() => setView('menu')}>← Zurück</button>
       
       <div className="filter-section">
@@ -135,7 +135,7 @@ export function MainMenu({ onClose }: MainMenuProps) {
         <p style={{ margin: 0, fontSize: '0.85rem', lineHeight: '1.4' }}>
           Diese App basiert auf Open-Source-Software:<br/>
           • Preact & Signals (MIT)<br/>
-          • Capacitor (MIT)<br/>
+          • Capacitor (MIT) & Plugins (MIT/ISC)<br/>
           • PDF.js (Apache 2.0)<br/>
           • Dexie.js (Apache 2.0)<br/>
           • Lucide Icons (ISC)
@@ -143,16 +143,27 @@ export function MainMenu({ onClose }: MainMenuProps) {
       </div>
 
       <div className="filter-section">
-        <h3>Rechtliche Hinweise</h3>
+        <h3>Impressum</h3>
         <p style={{ margin: 0, fontSize: '0.85rem', lineHeight: '1.4' }}>
-          Dies ist ein Drittanbieter-Interface für Paperless-ngx. Paperless-ngx unterliegt der GPL-3.0 Lizenz. Keine Zugehörigkeit zum offiziellen Paperless-ngx Team.
+          <strong>Verantwortlich gemäß § 5 TMG:</strong><br/>
+          Christian Bernauer<br/>
+          Dianastr. 2b<br/>
+          90547 Stein<br/>
+          E-Mail: christian@bernauer24.com
         </p>
       </div>
 
       <div className="filter-section">
-        <h3>Impressum</h3>
-        <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.6 }}>
-          Hier kannst du dein Impressum hinterlegen. Gemäß § 5 TMG sind diese Angaben für geschäftsmäßige Dienste in Deutschland verpflichtend.
+        <h3>Datenschutz</h3>
+        <p style={{ margin: 0, fontSize: '0.85rem', lineHeight: '1.4' }}>
+          Die Betreiber dieser App nehmen den Schutz Ihrer persönlichen Daten sehr ernst. Wir behandeln Ihre personenbezogenen Daten vertraulich und entsprechend der gesetzlichen Datenschutzvorschriften sowie dieser Datenschutzerklärung. Die Nutzung dieser App ist in der Regel ohne Angabe personenbezogener Daten möglich.
+        </p>
+      </div>
+
+      <div className="filter-section">
+        <h3>Hinweis</h3>
+        <p style={{ margin: 0, fontSize: '0.85rem', lineHeight: '1.4' }}>
+          Dies ist ein Drittanbieter-Interface für Paperless-ngx. Es besteht keine offizielle Verbindung zum Paperless-ngx Team.
         </p>
       </div>
     </div>
