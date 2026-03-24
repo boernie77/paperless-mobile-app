@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks';
+import { useState, useEffect } from 'preact/hooks';
 import { Camera, CameraResultType } from '@capacitor/camera';
 import { apiSignal } from '../store.ts';
 import { db } from '../db.ts';
@@ -11,6 +11,24 @@ export function MainMenu({ onClose }: MainMenuProps) {
   const [status, setStatus] = useState('');
   const [uploading, setUploading] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [estimatedSizeMb, setEstimatedSizeMb] = useState<number | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    const fetchCount = async () => {
+      try {
+        const api = apiSignal.value;
+        if (api) {
+          const res = await api.getDocuments({ page_size: '1' });
+          if (active) setEstimatedSizeMb(Math.round(res.count * 1.5 * 10) / 10);
+        }
+      } catch (err) {
+        // Fallback or ignore
+      }
+    };
+    fetchCount();
+    return () => { active = false; };
+  }, [apiSignal.value]);
 
   const takePhoto = async () => {
     try {
@@ -35,9 +53,7 @@ export function MainMenu({ onClose }: MainMenuProps) {
       }
     } catch (err) {
       console.error(err);
-      if (String(err).includes('User cancelled')) {
-        // User just closed camera, do nothing
-      } else {
+      if (!String(err).includes('User cancelled')) {
         setStatus('Fehler beim Scan-Upload.');
       }
     } finally {
@@ -80,19 +96,17 @@ export function MainMenu({ onClose }: MainMenuProps) {
     setStatus('Starte Offline-Synchronisation...');
     
     try {
-      const result = await api.getDocuments(); // Default page size currently limited, should be increased or paginated for full sync
+      const result = await api.getDocuments(); 
       const onlineDocs = result.results;
       
       let count = 0;
       for (const doc of onlineDocs) {
         setStatus(`Lade Dokument ${count + 1} von ${onlineDocs.length}`);
         try {
-          const blob = await api.downloadDocument(doc.id);
-          await db.documents.update(doc.id, { blob });
-          count++;
-        } catch (e) {
-          console.error("Failed to download", doc.id, e);
-        }
+           const blob = await api.downloadDocument(doc.id);
+           await db.documents.update(doc.id, { blob });
+           count++;
+        } catch(e) {}
       }
       
       setStatus(`Erfolgreich: ${count} Dokumente offline gespeichert.`);
@@ -105,9 +119,6 @@ export function MainMenu({ onClose }: MainMenuProps) {
       }, 3000);
     }
   };
-
-  // Schätzung für Offline Speicher: 1.5MB pro Dokument grob gepeilt
-  const estimatedSizeMb = 15; // Wir nehmen an, dass es im Schnitt 15MB sind für eine kleine Instanz, kann später dynamisch berechnet werden.
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -127,9 +138,9 @@ export function MainMenu({ onClose }: MainMenuProps) {
           <hr className="menu-divider" />
           <div className="menu-info-block">
             <button className="menu-button" onClick={downloadAll} disabled={uploading || downloading}>
-              <span className="icon">☁️</span> Alle Dokumente offline speichern
+              <span className="icon">☁️</span> Alle offline verfügbar machen
             </button>
-            <p className="menu-hint">Hinweis: Dies erfordert ca. 1-2 MB Speicherplatz pro Dokument in der lokalen Datenbank.</p>
+            <p className="menu-hint">Hinweis: Dies erfordert insgesamt ca. {estimatedSizeMb !== null ? estimatedSizeMb : '?'} MB Speicherplatz auf deinem Gerät.</p>
           </div>
         </div>
         

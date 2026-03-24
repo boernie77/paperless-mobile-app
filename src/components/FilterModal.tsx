@@ -5,16 +5,18 @@ import { db } from '../db.ts';
 export function FilterModal({ onClose }: { onClose: () => void }) {
   const currentFilters = filterSignal.value;
   const [correspondents, setCorrespondents] = useState<any[]>([]);
-  const [corrSearch, setCorrSearch] = useState('');
   const [docTypes, setDocTypes] = useState<any[]>([]);
   const [tags, setTags] = useState<any[]>([]);
   
-  // Locale State for the form
+  // Locals
   const [selectedCorr, setSelectedCorr] = useState<number | ''>(currentFilters.correspondent__id || '');
   const [selectedType, setSelectedType] = useState<number | ''>(currentFilters.document_type__id || '');
-  const [selectedTags, setSelectedTags] = useState<number[]>(currentFilters.tags__id__all ? currentFilters.tags__id__all.split(',').map(Number) : []);
   const [dateFrom, setDateFrom] = useState(currentFilters.created__date__gte || '');
   const [dateTo, setDateTo] = useState(currentFilters.created__date__lte || '');
+
+  // Sub-Modal state for correspondent
+  const [showCorrSelect, setShowCorrSelect] = useState(false);
+  const [corrSearch, setCorrSearch] = useState('');
 
   useEffect(() => {
     db.correspondents.toArray().then(setCorrespondents);
@@ -26,7 +28,6 @@ export function FilterModal({ onClose }: { onClose: () => void }) {
     const filters: Record<string, any> = {};
     if (selectedCorr) filters.correspondent__id = selectedCorr;
     if (selectedType) filters.document_type__id = selectedType;
-    if (selectedTags.length > 0) filters.tags__id__all = selectedTags.join(',');
     if (dateFrom) filters.created__date__gte = dateFrom;
     if (dateTo) filters.created__date__lte = dateTo;
     
@@ -39,8 +40,51 @@ export function FilterModal({ onClose }: { onClose: () => void }) {
     onClose();
   };
 
-  const filteredCorrespondents = correspondents.filter(c => c.name.toLowerCase().includes(corrSearch.toLowerCase()));
+  // Corr Sub-Modal Render
+  if (showCorrSelect) {
+    const filteredCorr = correspondents.filter(c => c.name.toLowerCase().includes(corrSearch.toLowerCase())).sort((a,b) => a.name.localeCompare(b.name));
+    
+    return (
+      <div className="modal-overlay">
+        <div className="filter-modal">
+          <div className="modal-header">
+            <button className="text-button" onClick={() => setShowCorrSelect(false)}>Zurück</button>
+            <h2 style={{ fontSize: '1.2rem' }}>Korrespondent ausw.</h2>
+            <div style={{ width: '40px' }}></div>
+          </div>
+          <input 
+            type="search" 
+            placeholder="Korrespondent suchen..." 
+            value={corrSearch}
+            onInput={(e) => setCorrSearch((e.target as HTMLInputElement).value)}
+            className="filter-input"
+            autoFocus
+          />
+          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <button 
+              className="menu-button" 
+              onClick={() => { setSelectedCorr(''); setShowCorrSelect(false); }}
+              style={{ justifyContent: 'space-between', padding: '0.8rem' }}
+            >
+              Alle {selectedCorr === '' && '✓'}
+            </button>
+            {filteredCorr.map(c => (
+              <button 
+                key={c.id} 
+                className="menu-button" 
+                onClick={() => { setSelectedCorr(c.id); setShowCorrSelect(false); }}
+                style={{ justifyContent: 'space-between', padding: '0.8rem' }}
+              >
+                {c.name} {selectedCorr === c.id && '✓'}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
+  // Normal Filter Modal
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="filter-modal" onClick={e => e.stopPropagation()}>
@@ -51,24 +95,15 @@ export function FilterModal({ onClose }: { onClose: () => void }) {
 
         <div className="filter-section">
           <h3>Korrespondent</h3>
-          <input 
-            type="text" 
-            placeholder="Korrespondent suchen..." 
-            value={corrSearch}
-            onInput={(e) => setCorrSearch((e.target as HTMLInputElement).value)}
-            className="filter-input"
-          />
-          <select 
-            value={selectedCorr} 
-            onChange={e => setSelectedCorr(Number((e.target as HTMLSelectElement).value) || '')}
-            className="filter-input"
-            size={4}
+          <button 
+            type="button"
+            className="filter-input" 
+            style={{ textAlign: 'left', background: 'var(--surface)', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+            onClick={() => setShowCorrSelect(true)}
           >
-            <option value="">Alle</option>
-            {filteredCorrespondents.map(c => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
+            <span>{selectedCorr ? correspondents.find(c => c.id === selectedCorr)?.name || 'Unbekannt' : 'Alle'}</span>
+            <span style={{opacity: 0.5}}>▼</span>
+          </button>
         </div>
 
         <div className="filter-section">
