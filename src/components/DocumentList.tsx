@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useState, useRef, useCallback } from 'preact/hooks';
 import { apiSignal, filterSignal } from '../store.ts';
 import { db } from '../db.ts';
 import { Thumbnail } from './Thumbnail.tsx';
@@ -179,6 +179,21 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
     setDocs([]);
   }, [inboxOnly, filterSignal.value, ordering]);
 
+  // Infinite Scroll Observer
+  const observer = useRef<IntersectionObserver | null>(null);
+  const lastElementRef = useCallback((node: HTMLDivElement | null) => {
+    if (loading || isLoadingMore) return;
+    if (observer.current) observer.current.disconnect();
+    
+    observer.current = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && hasMore) {
+        setPage(p => p + 1);
+      }
+    });
+    
+    if (node) observer.current.observe(node);
+  }, [loading, isLoadingMore, hasMore]);
+
   const toggleOffline = async (doc: any) => {
     const api = apiSignal.value;
     if (!api) return;
@@ -250,6 +265,7 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
             <div key={doc.id} className="doc-card" onClick={() => setSelectedDoc(doc)}>
               <div className="doc-thumbnail-col">
                 <Thumbnail documentId={doc.id} />
+                {doc.blob && <div className="offline-badge">✓</div>}
               </div>
               <div className="doc-info">
                 <h3>{doc.title}</h3>
@@ -274,6 +290,14 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
               </div>
             </div>
           ))
+        )}
+        {/* Invisible anchor for infinite scroll */}
+        <div ref={lastElementRef} style={{ height: '20px', margin: '20px 0' }} />
+        
+        {isLoadingMore && (
+           <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-dim)' }}>
+             Lade weitere Dokumente...
+           </div>
         )}
       </div>
 

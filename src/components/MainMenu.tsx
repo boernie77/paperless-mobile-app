@@ -104,20 +104,26 @@ export function MainMenu({ onClose }: MainMenuProps) {
       
       while (nextUrl) {
         setStatus(`Rufe Dokumentenliste ab... (${allDocs.length} gefunden)`);
-        // Extract params from nextUrl if it's a full URL, or just use it as endpoint
-        let endpoint = nextUrl;
-        if (endpoint.includes('?')) {
-           const parts = endpoint.split('?');
-           endpoint = 'documents/?' + parts[1];
-        } else if (!endpoint.endsWith('/')) {
-           endpoint += '/';
+        
+        // Extract params from nextUrl if it's a full URL
+        let fetchParams: any = {};
+        if (nextUrl === 'documents/') {
+          fetchParams = params;
+        } else if (nextUrl.includes('?')) {
+          const queryString = nextUrl.split('?')[1];
+          const urlParams = new URLSearchParams(queryString);
+          fetchParams = Object.fromEntries(urlParams.entries());
         }
 
-        const result: any = await api.getDocuments(nextUrl === 'documents/' ? params : { ...new URLSearchParams(nextUrl.split('?')[1]).entries() as any });
+        const result: any = await api.getDocuments(fetchParams);
         allDocs.push(...result.results);
         nextUrl = result.next;
         
-        if (allDocs.length > 500) break; // Safety limit for now
+        // Safety limit increased to something high but reasonable for mobile memory
+        if (allDocs.length > 20000) {
+           console.warn('Sync limit of 20,000 documents reached. Stopping to prevent memory issues.');
+           break;
+        }
       }
 
       let count = 0;
@@ -148,7 +154,7 @@ export function MainMenu({ onClose }: MainMenuProps) {
       
       <div className="filter-section">
         <h3>App Version</h3>
-        <p style={{ margin: 0 }}>v1.3.0 stable</p>
+        <p style={{ margin: 0 }}>v1.3.1 stable</p>
       </div>
 
       <div className="filter-section">
