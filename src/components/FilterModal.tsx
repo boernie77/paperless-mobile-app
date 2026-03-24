@@ -27,8 +27,8 @@ export function FilterModal({ onClose }: { onClose: () => void }) {
 
   const handleApply = () => {
     const filters: Record<string, any> = {};
-    if (selectedCorr) filters.correspondent = selectedCorr;
-    if (selectedType) filters.document_type = selectedType;
+    if (selectedCorr) filters.correspondent__id = selectedCorr;
+    if (selectedType) filters.document_type__id = selectedType;
     if (selectedTag) filters.tags__id__all = selectedTag;
     if (dateFrom) filters.created__date__gte = dateFrom;
     if (dateTo) filters.created__date__lte = dateTo;
@@ -105,6 +105,10 @@ export function FilterModal({ onClose }: { onClose: () => void }) {
             <span>{selectedType ? docTypes.find(d => d.id === selectedType)?.name || 'Geladen...' : 'Alle'}</span>
             <span style={{opacity: 0.5}}>▶</span>
           </button>
+        </div>
+
+        <div style={{ marginTop: '2rem', fontSize: '0.7rem', opacity: 0.3, textAlign: 'center' }}>
+           v1.2.0-secure-debug
         </div>
 
         <div className="filter-section">

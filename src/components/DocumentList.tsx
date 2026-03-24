@@ -65,11 +65,11 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
       const applyLocalFilters = (items: any[]) => {
         let result = [...items];
         // Apply advanced filters
-        if (filters.correspondent) {
-          result = result.filter(d => d.correspondent === filters.correspondent);
+        if (filters.correspondent__id) {
+          result = result.filter(d => d.correspondent === filters.correspondent__id);
         }
-        if (filters.document_type) {
-          result = result.filter(d => d.document_type === filters.document_type);
+        if (filters.document_type__id) {
+          result = result.filter(d => d.document_type === filters.document_type__id);
         }
         if (filters.tags__id__all) {
           result = result.filter(d => d.tags?.includes(filters.tags__id__all));
@@ -204,8 +204,11 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
         
         {Object.keys(filterSignal.value).length > 0 && (
           <div className="active-filters-row" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '-0.25rem', marginBottom: '0.25rem' }}>
-            <span className="tag-pill" style={{ background: 'var(--primary)', color: 'white', fontWeight: 'bold' }}>
-              Filter aktiv
+            <span className="tag-pill" 
+              style={{ background: 'var(--primary)', color: 'white', fontWeight: 'bold', cursor: 'help' }}
+              onClick={() => alert(`DEBUG INFO:\nFilters: ${JSON.stringify(filterSignal.value)}\nDocs: ${docs.length}\nAPI: ${apiSignal.value ? 'Online' : 'Offline'}`)}
+            >
+              Filter aktiv (!)
             </span>
             <button 
               onClick={() => { filterSignal.value = {}; }} 
