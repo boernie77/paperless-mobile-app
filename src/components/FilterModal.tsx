@@ -11,6 +11,7 @@ export function FilterModal({ onClose }: { onClose: () => void }) {
   // Locals
   const [selectedCorr, setSelectedCorr] = useState<number | ''>(currentFilters.correspondent || '');
   const [selectedType, setSelectedType] = useState<number | ''>(currentFilters.document_type || '');
+  const [selectedTag, setSelectedTag] = useState<number | ''>(currentFilters.tags__id__all || '');
   const [dateFrom, setDateFrom] = useState(currentFilters.created__date__gte || '');
   const [dateTo, setDateTo] = useState(currentFilters.created__date__lte || '');
 
@@ -20,6 +21,9 @@ export function FilterModal({ onClose }: { onClose: () => void }) {
   
   const [showTypeSelect, setShowTypeSelect] = useState(false);
   const [typeSearch, setTypeSearch] = useState('');
+
+  const [showTagSelect, setShowTagSelect] = useState(false);
+  const [tagSearch, setTagSearch] = useState('');
 
   useEffect(() => {
     db.correspondents.toArray().then(setCorrespondents);
@@ -31,6 +35,7 @@ export function FilterModal({ onClose }: { onClose: () => void }) {
     const filters: Record<string, any> = {};
     if (selectedCorr) filters.correspondent = selectedCorr;
     if (selectedType) filters.document_type = selectedType;
+    if (selectedTag) filters.tags__id__all = selectedTag;
     if (dateFrom) filters.created__date__gte = dateFrom;
     if (dateTo) filters.created__date__lte = dateTo;
     
@@ -131,6 +136,50 @@ export function FilterModal({ onClose }: { onClose: () => void }) {
     );
   }
 
+  // Tag Sub-Modal Render
+  if (showTagSelect) {
+    const filteredTags = tags.filter(t => t.name.toLowerCase().includes(tagSearch.toLowerCase())).sort((a,b) => a.name.localeCompare(b.name));
+    
+    return (
+      <div className="modal-overlay">
+        <div className="filter-modal">
+          <div className="modal-header">
+            <button className="header-button" onClick={() => setShowTagSelect(false)}>← Zurück</button>
+            <h2 style={{ fontSize: '1.2rem' }}>Tag / Filter</h2>
+            <div style={{ width: '40px' }}></div>
+          </div>
+          <input 
+            type="search" 
+            placeholder="Tag suchen..." 
+            value={tagSearch}
+            onInput={(e) => setTagSearch((e.target as HTMLInputElement).value)}
+            className="filter-input"
+            autoFocus
+          />
+          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <button 
+              className="menu-button" 
+              onClick={() => { setSelectedTag(''); setShowTagSelect(false); }}
+              style={{ justifyContent: 'space-between', padding: '0.8rem' }}
+            >
+              Alle {selectedTag === '' && '✓'}
+            </button>
+            {filteredTags.map(t => (
+              <button 
+                key={t.id} 
+                className="menu-button" 
+                onClick={() => { setSelectedTag(t.id); setShowTagSelect(false); }}
+                style={{ justifyContent: 'space-between', padding: '0.8rem' }}
+              >
+                {t.name} {selectedTag === t.id && '✓'}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Normal Filter Modal
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -162,6 +211,19 @@ export function FilterModal({ onClose }: { onClose: () => void }) {
             onClick={() => setShowTypeSelect(true)}
           >
             <span>{selectedType ? docTypes.find(d => d.id === selectedType)?.name || 'Unbekannt' : 'Alle'}</span>
+            <span style={{opacity: 0.5}}>▼</span>
+          </button>
+        </div>
+
+        <div className="filter-section">
+          <h3>Tag / Filter</h3>
+          <button 
+            type="button"
+            className="filter-input" 
+            style={{ textAlign: 'left', background: 'var(--surface)', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+            onClick={() => setShowTagSelect(true)}
+          >
+            <span>{selectedTag ? tags.find(t => t.id === selectedTag)?.name || 'Unbekannt' : 'Alle'}</span>
             <span style={{opacity: 0.5}}>▼</span>
           </button>
         </div>

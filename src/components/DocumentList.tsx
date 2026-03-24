@@ -60,10 +60,33 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
         console.error('Metadata fetch failed', err);
       }
 
+      const filters = filterSignal.value;
+      
+      const applyLocalFilters = (items: any[]) => {
+        let result = [...items];
+        // Apply advanced filters
+        if (filters.correspondent) {
+          result = result.filter(d => d.correspondent === filters.correspondent);
+        }
+        if (filters.document_type) {
+          result = result.filter(d => d.document_type === filters.document_type);
+        }
+        if (filters.tags__id__all) {
+          result = result.filter(d => d.tags?.includes(filters.tags__id__all));
+        }
+        if (filters.created__date__gte) {
+          const from = new Date(filters.created__date__gte).getTime();
+          result = result.filter(d => d.created && new Date(d.created).getTime() >= from);
+        }
+        if (filters.created__date__lte) {
+          const to = new Date(filters.created__date__lte).getTime();
+          result = result.filter(d => d.created && new Date(d.created).getTime() <= to);
+        }
+        return result;
+      };
+
       if (!api) {
         let offlineDocs = await db.documents.toArray();
-        const filters = filterSignal.value;
-
         if (inboxOnly) {
           const inboxTagIds = Object.keys(tags)
             .filter(k => tags[parseInt(k)]?.toLowerCase().includes('inbox') || tags[parseInt(k)]?.toLowerCase().includes('posteingang'))
@@ -71,21 +94,7 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
           offlineDocs = offlineDocs.filter(d => d.tags?.some((t: number) => inboxTagIds.includes(t)));
         }
 
-        // Apply advanced filters offline
-        if (filters.correspondent) {
-          offlineDocs = offlineDocs.filter(d => d.correspondent === filters.correspondent);
-        }
-        if (filters.document_type) {
-          offlineDocs = offlineDocs.filter(d => d.document_type === filters.document_type);
-        }
-        if (filters.created__date__gte) {
-          const from = new Date(filters.created__date__gte).getTime();
-          offlineDocs = offlineDocs.filter(d => new Date(d.created).getTime() >= from);
-        }
-        if (filters.created__date__lte) {
-          const to = new Date(filters.created__date__lte).getTime();
-          offlineDocs = offlineDocs.filter(d => new Date(d.created).getTime() <= to);
-        }
+        offlineDocs = applyLocalFilters(offlineDocs);
         
         // apply simple offline sorting
         offlineDocs.sort((a,b) => {
@@ -105,22 +114,41 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
       
       try {
         // Collect query parameters
-        const params: Record<string, string> = { ...filterSignal.value };
-        if (inboxOnly) params.tags__name__iexact = 'inbox';
+        const params: Record<string, string> = {};
+        // Convert all filter values to strings for URLSearchParams
+        Object.entries(filters).forEach(([k, v]) => {
+           if (v !== undefined && v !== null && v !== '') params[k] = String(v);
+        });
+        
+        if (inboxOnly) {
+           // Find inbox tag ID rather than using name iexact (safer with local metadata)
+           const inboxTagId = Object.keys(tags).find(k => 
+              tags[parseInt(k)]?.toLowerCase().includes('inbox') || 
+              tags[parseInt(k)]?.toLowerCase().includes('posteingang')
+           );
+           if (inboxTagId) params.tags__id__all = inboxTagId;
+           else params.tags__name__iexact = 'inbox';
+        }
         params.ordering = ordering;
         
         const result = await api.getDocuments(params);
         const onlineDocs = result.results;
         
-        if (!inboxOnly && Object.keys(filterSignal.value).length === 0) {
-           // only update offline cache if no specific advanced filters are active to avoid sparse databases
-           await db.documents.bulkPut(onlineDocs.map((d: any) => ({ ...d, blob: undefined })));
+        if (!inboxOnly && Object.keys(filters).length === 0) {
+            await db.documents.bulkPut(onlineDocs.map((d: any) => ({ ...d, blob: undefined })));
         }
         
         setDocs(onlineDocs);
       } catch (err) {
+        console.error('Fetch failed, showing filtered offline docs', err);
         let offlineDocs = await db.documents.toArray();
-        setDocs(offlineDocs);
+        if (inboxOnly) {
+          const inboxTagIds = Object.keys(tags)
+            .filter(k => tags[parseInt(k)]?.toLowerCase().includes('inbox') || tags[parseInt(k)]?.toLowerCase().includes('posteingang'))
+            .map(k => parseInt(k));
+          offlineDocs = offlineDocs.filter(d => d.tags?.some((t: number) => inboxTagIds.includes(t)));
+        }
+        setDocs(applyLocalFilters(offlineDocs));
       } finally {
         setLoading(false);
       }
