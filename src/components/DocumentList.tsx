@@ -87,7 +87,7 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
 
       if (!api) {
         let offlineDocs = await db.documents.toArray();
-        if (inboxOnly) {
+        if (inboxOnly && Object.keys(filters).length === 0) {
           const inboxTagIds = Object.keys(tags)
             .filter(k => tags[parseInt(k)]?.toLowerCase().includes('inbox') || tags[parseInt(k)]?.toLowerCase().includes('posteingang'))
             .map(k => parseInt(k));
@@ -120,7 +120,7 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
            if (v !== undefined && v !== null && v !== '') params[k] = String(v);
         });
         
-        if (inboxOnly) {
+        if (inboxOnly && Object.keys(filters).length === 0) {
            // Find inbox tag ID rather than using name iexact (safer with local metadata)
            const inboxTagId = Object.keys(tags).find(k => 
               tags[parseInt(k)]?.toLowerCase().includes('inbox') || 
@@ -142,7 +142,7 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
       } catch (err) {
         console.error('Fetch failed, showing filtered offline docs', err);
         let offlineDocs = await db.documents.toArray();
-        if (inboxOnly) {
+        if (inboxOnly && Object.keys(filters).length === 0) {
           const inboxTagIds = Object.keys(tags)
             .filter(k => tags[parseInt(k)]?.toLowerCase().includes('inbox') || tags[parseInt(k)]?.toLowerCase().includes('posteingang'))
             .map(k => parseInt(k));
