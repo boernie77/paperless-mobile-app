@@ -13,26 +13,31 @@ export interface OfflineDocument {
   blob?: Blob;
 }
 
-export interface OfflineTag {
+export interface OfflineMetadata {
   id: number;
   name: string;
-  slug: string;
-  color: string;
+  slug?: string;
+  color?: string;
 }
 
 export class PaperlessDB extends Dexie {
   documents!: Table<OfflineDocument>;
-  tags!: Table<OfflineTag>;
+  tags!: Table<OfflineMetadata>;
+  correspondents!: Table<OfflineMetadata>;
+  documentTypes!: Table<OfflineMetadata>;
   settings!: Table<{ key: string; value: any }>;
 
   constructor() {
     super('PaperlessDB');
-    this.version(1).stores({
+    this.version(2).stores({
       documents: 'id, title, correspondent, document_type, *tags',
       tags: 'id, name',
+      correspondents: 'id, name',
+      documentTypes: 'id, name',
       settings: 'key'
     });
   }
 }
+
 
 export const db = new PaperlessDB();

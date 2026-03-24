@@ -31,3 +31,7 @@ const savedToken = localStorage.getItem('paperless_token');
 if (savedUrl && savedToken) {
   initializeAuth(savedUrl, savedToken);
 }
+
+// Global filter state for DocumentList
+export const filterSignal = signal<Record<string, any>>({});
+
