@@ -109,6 +109,22 @@ input:focus {
   margin-bottom: 1rem;
 }
 
+.title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  box-shadow: 0 0 5px currentColor;
+}
+
+.status-dot.online { color: #10b981; background-color: #10b981; }
+.status-dot.offline { color: #ef4444; background-color: #ef4444; }
+
 .search-bar input {
   width: 100%;
   padding: 0.8rem 1.2rem;
