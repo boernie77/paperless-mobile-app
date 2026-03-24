@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'preact/hooks';
 import { Camera, CameraResultType } from '@capacitor/camera';
-import { apiSignal } from '../store.ts';
+import { apiSignal, logout, filterSignal } from '../store.ts';
 import { db } from '../db.ts';
 
 interface MainMenuProps {
@@ -89,20 +89,40 @@ export function MainMenu({ onClose }: MainMenuProps) {
     input.click();
   };
 
-  const downloadAll = async () => {
+  const downloadAll = async (useFilters = false) => {
     const api = apiSignal.value;
     if (!api) return;
     
     setDownloading(true);
-    setStatus('Starte Offline-Synchronisation...');
+    setStatus(useFilters ? 'Lade Auswahl herunter...' : 'Starte vollständige Synchronisation...');
     
     try {
-      const result = await api.getDocuments(); 
-      const onlineDocs = result.results;
+      const allDocs: any[] = [];
+      let nextUrl: string | null = 'documents/';
       
+      const params: any = useFilters ? { ...filterSignal.value } : {};
+      
+      while (nextUrl) {
+        setStatus(`Rufe Dokumentenliste ab... (${allDocs.length} gefunden)`);
+        // Extract params from nextUrl if it's a full URL, or just use it as endpoint
+        let endpoint = nextUrl;
+        if (endpoint.includes('?')) {
+           const parts = endpoint.split('?');
+           endpoint = 'documents/?' + parts[1];
+        } else if (!endpoint.endsWith('/')) {
+           endpoint += '/';
+        }
+
+        const result: any = await api.getDocuments(nextUrl === 'documents/' ? params : { ...new URLSearchParams(nextUrl.split('?')[1]).entries() as any });
+        allDocs.push(...result.results);
+        nextUrl = result.next;
+        
+        if (allDocs.length > 500) break; // Safety limit for now
+      }
+
       let count = 0;
-      for (const doc of onlineDocs) {
-        setStatus(`Lade Dokument ${count + 1} von ${onlineDocs.length}`);
+      for (const doc of allDocs) {
+        setStatus(`Lade Dokument ${count + 1} von ${allDocs.length}`);
         try {
            const blob = await api.downloadDocument(doc.id);
            await db.documents.update(doc.id, { blob });
@@ -112,6 +132,7 @@ export function MainMenu({ onClose }: MainMenuProps) {
       
       setStatus(`Erfolgreich: ${count} Dokumente offline gespeichert.`);
     } catch (err) {
+      console.error(err);
       setStatus('Synchronisation fehlgeschlagen.');
     } finally {
       setTimeout(() => {
@@ -188,14 +209,25 @@ export function MainMenu({ onClose }: MainMenuProps) {
             </button>
             <hr className="menu-divider" />
             <div className="menu-info-block">
-              <button className="menu-button" onClick={downloadAll} disabled={uploading || downloading}>
+              <button className="menu-button" onClick={() => downloadAll(false)} disabled={uploading || downloading}>
                 <span className="icon">☁️</span> Alle offline verfügbar machen
               </button>
+              {Object.keys(filterSignal.value).length > 0 && (
+                <button className="menu-button" onClick={() => downloadAll(true)} disabled={uploading || downloading} style={{ background: 'rgba(59, 130, 246, 0.2)' }}>
+                  <span className="icon">🔍</span> Auswahl laden
+                </button>
+              )}
               <p className="menu-hint">Hinweis: Dies erfordert insgesamt ca. {estimatedSizeMb !== null ? estimatedSizeMb : '?'} MB Speicherplatz auf deinem Gerät.</p>
             </div>
-            <button className="menu-button" onClick={() => setView('about')} style={{ marginTop: 'auto', opacity: 0.7 }}>
-              <span className="icon">ℹ️</span> Über & Lizenzen
-            </button>
+            
+            <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+               <button className="menu-button" onClick={() => setView('about')} style={{ opacity: 0.7 }}>
+                 <span className="icon">ℹ️</span> Über & Lizenzen
+               </button>
+               <button className="menu-button logout-btn" onClick={logout} style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
+                 <span className="icon">🚪</span> Abmelden
+               </button>
+            </div>
           </div>
         ) : renderAbout()}
         

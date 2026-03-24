@@ -6,7 +6,9 @@ export function Login() {
   const [url, setUrl] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [tokenInput, setTokenInput] = useState('');
+  const [showToken, setShowToken] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -71,12 +73,22 @@ export function Login() {
 
           <div className="input-group">
             <label>API Token (aus dem Profil)</label>
-            <input 
-              type="password" 
-              placeholder="Dein Token (optional)" 
-              value={tokenInput}
-              onInput={(e) => setTokenInput((e.target as HTMLInputElement).value)}
-            />
+            <div className="password-input-wrapper">
+              <input 
+                type={showToken ? "text" : "password"} 
+                placeholder="Dein Token (optional)" 
+                value={tokenInput}
+                onInput={(e) => setTokenInput((e.target as HTMLInputElement).value)}
+              />
+              <button 
+                type="button" 
+                className="password-toggle" 
+                onClick={() => setShowToken(!showToken)}
+                title={showToken ? "Verbergen" : "Anzeigen"}
+              >
+                {showToken ? '👁️' : '🔒'}
+              </button>
+            </div>
           </div>
 
           <div className="divider">ODER</div>
@@ -93,12 +105,22 @@ export function Login() {
 
           <div className="input-group">
             <label>Passwort</label>
-            <input 
-              type="password" 
-              placeholder="Dein Passwort (optional)" 
-              value={password}
-              onInput={(e) => setPassword((e.target as HTMLInputElement).value)}
-            />
+            <div className="password-input-wrapper">
+              <input 
+                type={showPassword ? "text" : "password"} 
+                placeholder="Dein Passwort (optional)" 
+                value={password}
+                onInput={(e) => setPassword((e.target as HTMLInputElement).value)}
+              />
+              <button 
+                type="button" 
+                className="password-toggle" 
+                onClick={() => setShowPassword(!showPassword)}
+                title={showPassword ? "Verbergen" : "Anzeigen"}
+              >
+                {showPassword ? '👁️' : '🔒'}
+              </button>
+            </div>
           </div>
           
           {error && <p className="error-message">{error}</p>}

@@ -14,17 +14,19 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
   const [correspondents, setCorrespondents] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
   
-  // UI States
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+
   const [search, setSearch] = useState('');
   const [ordering, setOrdering] = useState('-created');
   const [selectedDoc, setSelectedDoc] = useState<any>(null);
   const [showSortModal, setShowSortModal] = useState(false);
 
+  // Metadata Fetching
   useEffect(() => {
-    setLoading(true);
-    const fetchData = async () => {
+    const fetchMetadata = async () => {
       const api = apiSignal.value;
-      
       try {
         if (api) {
           const [tagRes, corrRes, typeRes] = await Promise.all([
@@ -42,10 +44,8 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
           corrRes.results.forEach((c: any) => corrMap[c.id] = c.name);
           setCorrespondents(corrMap);
           await db.correspondents.bulkPut(corrRes.results);
-
           await db.documentTypes.bulkPut(typeRes.results);
         } else {
-          // offline fallback
           const offlineTags = await db.tags.toArray();
           const tagMap: Record<number, string> = {};
           offlineTags.forEach((t: any) => tagMap[t.id] = t.name);
@@ -59,33 +59,44 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
       } catch (err) {
         console.error('Metadata fetch failed', err);
       }
+    };
+    fetchMetadata();
+  }, [apiSignal.value]);
 
-      const filters = filterSignal.value;
+  // Main Document fetching
+  useEffect(() => {
+    const filters = filterSignal.value;
+    
+    const applyLocalFilters = (items: any[]) => {
+      let result = [...items];
+      if (filters.correspondent__id) {
+        result = result.filter(d => d.correspondent === filters.correspondent__id);
+      }
+      if (filters.document_type__id) {
+        result = result.filter(d => d.document_type === filters.document_type__id);
+      }
+      if (filters.tags__id__all) {
+        result = result.filter(d => d.tags?.includes(filters.tags__id__all));
+      }
+      if (filters.created__date__gte) {
+        const from = new Date(filters.created__date__gte).getTime();
+        result = result.filter(d => d.created && new Date(d.created).getTime() >= from);
+      }
+      if (filters.created__date__lte) {
+        const to = new Date(filters.created__date__lte).getTime();
+        result = result.filter(d => d.created && new Date(d.created).getTime() <= to);
+      }
+      return result;
+    };
+
+    const fetchData = async () => {
+      if (page === 1) setLoading(true);
+      else setIsLoadingMore(true);
+
+      const api = apiSignal.value;
       
-      const applyLocalFilters = (items: any[]) => {
-        let result = [...items];
-        // Apply advanced filters
-        if (filters.correspondent__id) {
-          result = result.filter(d => d.correspondent === filters.correspondent__id);
-        }
-        if (filters.document_type__id) {
-          result = result.filter(d => d.document_type === filters.document_type__id);
-        }
-        if (filters.tags__id__all) {
-          result = result.filter(d => d.tags?.includes(filters.tags__id__all));
-        }
-        if (filters.created__date__gte) {
-          const from = new Date(filters.created__date__gte).getTime();
-          result = result.filter(d => d.created && new Date(d.created).getTime() >= from);
-        }
-        if (filters.created__date__lte) {
-          const to = new Date(filters.created__date__lte).getTime();
-          result = result.filter(d => d.created && new Date(d.created).getTime() <= to);
-        }
-        return result;
-      };
-
       if (!api) {
+        // Offline mode: Get all docs and filter locally (offline has no pagination support in this simplified setup)
         let offlineDocs = await db.documents.toArray();
         if (inboxOnly && Object.keys(filters).length === 0) {
           const inboxTagIds = Object.keys(tags)
@@ -95,8 +106,6 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
         }
 
         offlineDocs = applyLocalFilters(offlineDocs);
-        
-        // apply simple offline sorting
         offlineDocs.sort((a,b) => {
           if (ordering === '-created') return new Date(b.created).getTime() - new Date(a.created).getTime();
           if (ordering === 'created') return new Date(a.created).getTime() - new Date(b.created).getTime();
@@ -108,20 +117,23 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
         });
 
         setDocs(offlineDocs);
+        setHasMore(false);
         setLoading(false);
+        setIsLoadingMore(false);
         return;
       }
       
       try {
-        // Collect query parameters
-        const params: Record<string, string> = {};
-        // Convert all filter values to strings for URLSearchParams
+        const params: Record<string, string> = {
+          page: String(page),
+          ordering: ordering
+        };
+        
         Object.entries(filters).forEach(([k, v]) => {
            if (v !== undefined && v !== null && v !== '') params[k] = String(v);
         });
         
         if (inboxOnly && Object.keys(filters).length === 0) {
-           // Find inbox tag ID rather than using name iexact (safer with local metadata)
            const inboxTagId = Object.keys(tags).find(k => 
               tags[parseInt(k)]?.toLowerCase().includes('inbox') || 
               tags[parseInt(k)]?.toLowerCase().includes('posteingang')
@@ -129,33 +141,43 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
            if (inboxTagId) params.tags__id__all = inboxTagId;
            else params.tags__name__iexact = 'inbox';
         }
-        params.ordering = ordering;
         
         const result = await api.getDocuments(params);
-        const onlineDocs = result.results;
+        const newDocs = result.results;
         
-        if (!inboxOnly && Object.keys(filters).length === 0) {
-            await db.documents.bulkPut(onlineDocs.map((d: any) => ({ ...d, blob: undefined })));
+        if (page === 1 && !inboxOnly && Object.keys(filters).length === 0) {
+            await db.documents.bulkPut(newDocs.map((d: any) => ({ ...d, blob: undefined })));
         }
         
-        setDocs(applyLocalFilters(onlineDocs));
+        const filteredNewDocs = applyLocalFilters(newDocs);
+        
+        if (page === 1) {
+          setDocs(filteredNewDocs);
+        } else {
+          setDocs(prev => [...prev, ...filteredNewDocs]);
+        }
+        
+        setHasMore(!!result.next);
       } catch (err) {
-        console.error('Fetch failed, showing filtered offline docs', err);
-        let offlineDocs = await db.documents.toArray();
-        if (inboxOnly && Object.keys(filters).length === 0) {
-          const inboxTagIds = Object.keys(tags)
-            .filter(k => tags[parseInt(k)]?.toLowerCase().includes('inbox') || tags[parseInt(k)]?.toLowerCase().includes('posteingang'))
-            .map(k => parseInt(k));
-          offlineDocs = offlineDocs.filter(d => d.tags?.some((t: number) => inboxTagIds.includes(t)));
+        console.error('Fetch failed', err);
+        if (page === 1) {
+           let offlineDocs = await db.documents.toArray();
+           setDocs(applyLocalFilters(offlineDocs));
         }
-        setDocs(applyLocalFilters(offlineDocs));
       } finally {
         setLoading(false);
+        setIsLoadingMore(false);
       }
     };
     
     fetchData();
-  }, [apiSignal.value, inboxOnly, filterSignal.value, ordering]);
+  }, [apiSignal.value, inboxOnly, filterSignal.value, ordering, page]);
+
+  useEffect(() => {
+    // Reset page when filters or ordering changes
+    setPage(1);
+    setDocs([]);
+  }, [inboxOnly, filterSignal.value, ordering]);
 
   const toggleOffline = async (doc: any) => {
     const api = apiSignal.value;
