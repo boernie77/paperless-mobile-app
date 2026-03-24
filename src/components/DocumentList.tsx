@@ -62,11 +62,29 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
 
       if (!api) {
         let offlineDocs = await db.documents.toArray();
+        const filters = filterSignal.value;
+
         if (inboxOnly) {
           const inboxTagIds = Object.keys(tags)
             .filter(k => tags[parseInt(k)]?.toLowerCase().includes('inbox') || tags[parseInt(k)]?.toLowerCase().includes('posteingang'))
             .map(k => parseInt(k));
           offlineDocs = offlineDocs.filter(d => d.tags?.some((t: number) => inboxTagIds.includes(t)));
+        }
+
+        // Apply advanced filters offline
+        if (filters.correspondent) {
+          offlineDocs = offlineDocs.filter(d => d.correspondent === filters.correspondent);
+        }
+        if (filters.document_type) {
+          offlineDocs = offlineDocs.filter(d => d.document_type === filters.document_type);
+        }
+        if (filters.created__date__gte) {
+          const from = new Date(filters.created__date__gte).getTime();
+          offlineDocs = offlineDocs.filter(d => new Date(d.created).getTime() >= from);
+        }
+        if (filters.created__date__lte) {
+          const to = new Date(filters.created__date__lte).getTime();
+          offlineDocs = offlineDocs.filter(d => new Date(d.created).getTime() <= to);
         }
         
         // apply simple offline sorting

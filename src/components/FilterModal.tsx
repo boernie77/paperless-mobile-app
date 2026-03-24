@@ -9,8 +9,8 @@ export function FilterModal({ onClose }: { onClose: () => void }) {
   const [tags, setTags] = useState<any[]>([]);
   
   // Locals
-  const [selectedCorr, setSelectedCorr] = useState<number | ''>(currentFilters.correspondent__id || '');
-  const [selectedType, setSelectedType] = useState<number | ''>(currentFilters.document_type__id || '');
+  const [selectedCorr, setSelectedCorr] = useState<number | ''>(currentFilters.correspondent || '');
+  const [selectedType, setSelectedType] = useState<number | ''>(currentFilters.document_type || '');
   const [dateFrom, setDateFrom] = useState(currentFilters.created__date__gte || '');
   const [dateTo, setDateTo] = useState(currentFilters.created__date__lte || '');
 
@@ -29,8 +29,8 @@ export function FilterModal({ onClose }: { onClose: () => void }) {
 
   const handleApply = () => {
     const filters: Record<string, any> = {};
-    if (selectedCorr) filters.correspondent__id = selectedCorr;
-    if (selectedType) filters.document_type__id = selectedType;
+    if (selectedCorr) filters.correspondent = selectedCorr;
+    if (selectedType) filters.document_type = selectedType;
     if (dateFrom) filters.created__date__gte = dateFrom;
     if (dateTo) filters.created__date__lte = dateTo;
     
