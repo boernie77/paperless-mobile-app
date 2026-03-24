@@ -7,6 +7,24 @@ export class PaperlessAPI {
     this.token = token;
   }
 
+  static async getToken(baseUrl: string, username: string, password: string): Promise<string> {
+    const cleanUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+    const response = await fetch(`${cleanUrl}/api/token/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ username, password })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Login failed: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.token;
+  }
+
   private async fetch(endpoint: string, options: RequestInit = {}) {
     const url = `${this.baseUrl}/api/${endpoint}`;
     const response = await fetch(url, {

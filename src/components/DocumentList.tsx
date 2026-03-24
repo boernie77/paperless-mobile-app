@@ -2,7 +2,11 @@ import { useEffect, useState } from 'preact/hooks';
 import { apiSignal } from '../store.ts';
 import { db } from '../db.ts';
 
-export function DocumentList() {
+interface DocumentListProps {
+  inboxOnly?: boolean;
+}
+
+export function DocumentList({ inboxOnly = false }: DocumentListProps) {
   const [docs, setDocs] = useState<any[]>([]);
   const [tags, setTags] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
@@ -30,16 +34,29 @@ export function DocumentList() {
       }
 
       if (!api) {
-        const offlineDocs = await db.documents.toArray();
+        let offlineDocs = await db.documents.toArray();
+        if (inboxOnly) {
+          const inboxTagIds = Object.keys(tags)
+            .filter(k => tags[parseInt(k)]?.toLowerCase().includes('inbox') || tags[parseInt(k)]?.toLowerCase().includes('posteingang'))
+            .map(k => parseInt(k));
+          offlineDocs = offlineDocs.filter(d => d.tags?.some((t: number) => inboxTagIds.includes(t)));
+        }
         setDocs(offlineDocs);
         setLoading(false);
         return;
       }
       
       try {
-        const result = await api.getDocuments();
+        const params: Record<string, string> = {};
+        if (inboxOnly) params.tags__name__iexact = 'inbox';
+        
+        const result = await api.getDocuments(params);
         const onlineDocs = result.results;
-        await db.documents.bulkPut(onlineDocs.map((d: any) => ({ ...d, blob: undefined })));
+        
+        if (!inboxOnly) {
+          await db.documents.bulkPut(onlineDocs.map((d: any) => ({ ...d, blob: undefined })));
+        }
+        
         setDocs(onlineDocs);
       } catch (err) {
         const offlineDocs = await db.documents.toArray();
@@ -50,7 +67,7 @@ export function DocumentList() {
     };
     
     fetchData();
-  }, [apiSignal.value]);
+  }, [apiSignal.value, inboxOnly, tags]);
 
   const toggleOffline = async (doc: any) => {
     const api = apiSignal.value;

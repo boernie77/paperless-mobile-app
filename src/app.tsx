@@ -6,7 +6,7 @@ import { useState, useEffect } from 'preact/hooks';
 
 export function App() {
   const auth = authState.value;
-  const [view, setView] = useState<'list' | 'camera'>('list');
+  const [view, setView] = useState<'inbox' | 'list' | 'camera'>('inbox');
   const [isOnline, setIsOnline] = useState(true);
 
   // Einfacher Ping um Online-Status zu prüfen
@@ -47,6 +47,12 @@ export function App() {
         
         <nav className="sidebar-nav">
           <button 
+            className={`nav-item ${view === 'inbox' ? 'active' : ''}`}
+            onClick={() => setView('inbox')}
+          >
+            Posteingang
+          </button>
+          <button 
             className={`nav-item ${view === 'list' ? 'active' : ''}`}
             onClick={() => setView('list')}
           >
@@ -62,15 +68,23 @@ export function App() {
       </header>
       
       <main>
-        {view === 'list' ? <DocumentList /> : <CameraUpload />}
+        {view === 'inbox' && <DocumentList inboxOnly={true} />}
+        {view === 'list' && <DocumentList inboxOnly={false} />}
+        {view === 'camera' && <CameraUpload />}
       </main>
 
       <nav className="bottom-nav">
         <button 
+          className={`nav-item ${view === 'inbox' ? 'active' : ''}`}
+          onClick={() => setView('inbox')}
+        >
+          Inbox
+        </button>
+        <button 
           className={`nav-item ${view === 'list' ? 'active' : ''}`}
           onClick={() => setView('list')}
         >
-          Liste
+          Dokumente
         </button>
         <button 
           className={`nav-item ${view === 'camera' ? 'active' : ''}`}
@@ -82,6 +96,7 @@ export function App() {
     </div>
   );
 }
+
 
 
 
