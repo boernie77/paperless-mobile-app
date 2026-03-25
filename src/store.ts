@@ -34,5 +34,5 @@ if (savedUrl && savedToken) {
 
 // Global filter state for DocumentList
 export const filterSignal = signal<Record<string, any>>({});
-export const failedIdsSignal = signal<number[] | null>(null);
+export const failedDocsSignal = signal<{id: number, title: string}[] | null>(null);
 

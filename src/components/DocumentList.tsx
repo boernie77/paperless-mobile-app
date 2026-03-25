@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'preact/hooks';
-import { apiSignal, filterSignal, failedIdsSignal } from '../store.ts';
+import { apiSignal, filterSignal, failedDocsSignal } from '../store.ts';
 import { db } from '../db.ts';
 import { Thumbnail } from './Thumbnail.tsx';
 import { DocumentViewer } from './DocumentViewer.tsx';
@@ -158,8 +158,8 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
           ordering: ordering
         };
 
-        if (failedIdsSignal.value) {
-          params['id__in'] = failedIdsSignal.value.join(',');
+        if (failedDocsSignal.value) {
+          params['id__in'] = failedDocsSignal.value.map(d => d.id).join(',');
         }
         
         Object.entries(filters).forEach(([k, v]) => {
@@ -220,7 +220,15 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
             }
           } catch (dbErr) { }
         }
-        setError('Fehler beim Laden (Offline?)');
+
+        if (failedDocsSignal.value && page === 1) {
+          // If we have failure metadata, use it as a final fallback so the user sees something
+          setDocs(failedDocsSignal.value.map(f => ({ ...f, created: new Date().toISOString() })) as any);
+          setHasMore(false);
+          setError(api ? 'Fehler beim Laden' : 'Offline: Zeige Metadaten der Fehler');
+        } else {
+          setError(api ? 'Fehler beim Laden' : 'Fehler beim Laden (Offline?)');
+        }
       } finally {
         setLoading(false);
         setIsLoadingMore(false);
@@ -232,8 +240,7 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
 
   useEffect(() => {
     setPage(1);
-    setDocs([]);
-  }, [apiSignal.value, inboxOnly, filterSignal.value, ordering, failedIdsSignal.value]);
+  }, [apiSignal.value, inboxOnly, filterSignal.value, ordering, failedDocsSignal.value]);
 
   const observer = useRef<IntersectionObserver | null>(null);
   const lastElementRef = useCallback((node: HTMLDivElement | null) => {
@@ -298,10 +305,10 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
         </div>
         
         <div className="active-filters-row" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
-          {failedIdsSignal.value && (
+          {failedDocsSignal.value && (
             <div style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', padding: '0.4rem 0.8rem', borderRadius: '20px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-               ⚠️ {failedIdsSignal.value.length} Fehlerhafte Dokumente
-               <button onClick={() => failedIdsSignal.value = null} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0 0.2rem', fontWeight: 'bold' }}>✕</button>
+               ⚠️ {failedDocsSignal.value.length} Fehlerhafte Dokumente
+               <button onClick={() => failedDocsSignal.value = null} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0 0.2rem', fontWeight: 'bold' }}>✕</button>
             </div>
           )}
 

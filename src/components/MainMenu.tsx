@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'preact/hooks';
 import { Camera, CameraResultType } from '@capacitor/camera';
-import { authState, apiSignal, logout as logoutStore, filterSignal, failedIdsSignal } from '../store.ts';
+import { authState, apiSignal, logout as logoutStore, filterSignal, failedDocsSignal } from '../store.ts';
 import { db } from '../db.ts';
 
 interface MainMenuProps {
@@ -251,7 +251,7 @@ export function MainMenu({ onClose }: MainMenuProps) {
       )}
 
       <button className="menu-button" onClick={() => { 
-        failedIdsSignal.value = failedDocs.map(f => f.id);
+        failedDocsSignal.value = failedDocs.map(f => ({ id: f.id, title: f.title }));
         onClose(); 
       }} style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#ef4444' }}>
         Alle Fehler in Liste anzeigen
