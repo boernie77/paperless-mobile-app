@@ -75,6 +75,21 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
         }
       } catch (err) {
         console.error('Metadata fetch failed', err);
+        // Fallback to cached DB metadata when API is unreachable
+        try {
+          const [offlineTags, offlineCorr, offlineTypes] = await Promise.all([
+            db.tags.toArray(),
+            db.correspondents.toArray(),
+            db.documentTypes.toArray()
+          ]);
+          const tagMap: Record<number, string> = {};
+          offlineTags.forEach((t: any) => tagMap[t.id] = t.name);
+          const corrMap: Record<number, string> = {};
+          offlineCorr.forEach((c: any) => corrMap[c.id] = c.name);
+          const typeMap: Record<number, string> = {};
+          offlineTypes.forEach((t: any) => typeMap[t.id] = t.name);
+          setMeta({ tags: tagMap, correspondents: corrMap, documentTypes: typeMap });
+        } catch (dbErr) { }
       }
     };
     fetchMetadata();
@@ -121,27 +136,25 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
       }
 
       const api = apiSignal.value;
-      
+
+      // Sort helper for offline docs (supports all orderings)
+      const sortOfflineDocs = (items: any[]) => [...items].sort((a, b) => {
+        if (ordering === '-created') return new Date(b.created).getTime() - new Date(a.created).getTime();
+        if (ordering === 'created') return new Date(a.created).getTime() - new Date(b.created).getTime();
+        if (ordering === '-added') return new Date(b.added || b.created).getTime() - new Date(a.added || a.created).getTime();
+        if (ordering === 'added') return new Date(a.added || a.created).getTime() - new Date(b.added || b.created).getTime();
+        if (ordering === 'title') return (a.title || '').localeCompare(b.title || '');
+        if (ordering === '-title') return (b.title || '').localeCompare(a.title || '');
+        return 0;
+      });
+
       if (!api) {
+        // Pure offline mode - load all at once for smooth scrolling
         try {
-          // Offline Mode with Pagination
-          const PAGE_SIZE = 25;
           let allOffline = await db.documents.where('is_offline').equals(1).toArray();
           allOffline = applyLocalFilters(allOffline);
-          
-          allOffline.sort((a,b) => {
-            if (ordering === '-created') return new Date(b.created).getTime() - new Date(a.created).getTime();
-            if (ordering === 'created') return new Date(a.created).getTime() - new Date(b.created).getTime();
-            return 0;
-          });
-
-          const totalResults = allOffline.length;
-          const paginatedDocs = allOffline.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
-          if (page === 1) setDocs(paginatedDocs);
-          else setDocs(prev => [...prev, ...paginatedDocs]);
-          
-          setHasMore(totalResults > page * PAGE_SIZE);
+          setDocs(sortOfflineDocs(allOffline));
+          setHasMore(false);
           setError(null);
         } catch (e) {
           setError('Offline-Modus: Fehler beim Laden');
@@ -163,21 +176,33 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
         if (activeDiagnostic) {
           params['id__in'] = activeDiagnostic.map(d => d.id).join(',');
         } else {
-          // Standard filters only if NO diagnostic is active
+          // If offline docs exist, prefer them for instant smooth display
+          const allOfflineDocs = await db.documents.where('is_offline').equals(1).toArray();
+          if (allOfflineDocs.length > 0) {
+            const filtered = applyLocalFilters(allOfflineDocs);
+            setDocs(sortOfflineDocs(filtered));
+            setHasMore(false);
+            setError(null);
+            setLoading(false);
+            setIsLoadingMore(false);
+            return;
+          }
+
+          // No offline docs - use standard API filters
           Object.entries(filters).forEach(([k, v]) => {
              if (v !== undefined && v !== null && v !== '') params[k] = String(v);
           });
-          
+
           if (inboxOnly) {
-             const inboxTagId = Object.keys(meta.tags).find(k => 
-                (meta.tags as any)[parseInt(k)]?.toLowerCase().includes('inbox') || 
+             const inboxTagId = Object.keys(meta.tags).find(k =>
+                (meta.tags as any)[parseInt(k)]?.toLowerCase().includes('inbox') ||
                 (meta.tags as any)[parseInt(k)]?.toLowerCase().includes('posteingang')
              );
              if (inboxTagId) params.tags__id__all = inboxTagId;
              else params.tags__name__iexact = 'inbox';
           }
         }
-        
+
         const result = await api.getDocuments(params);
         console.log(`Loaded page ${page}, total count: ${result.count}, results: ${result.results.length}`);
         const newDocs = result.results;
@@ -211,26 +236,13 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
       } catch (err) {
         console.error('Fetch error:', err);
 
-        // Offline fallback with proper pagination for any page
+        // Offline fallback - load all at once for smooth scrolling
         try {
-          const PAGE_SIZE = 25;
           let allOffline = await db.documents.where('is_offline').equals(1).toArray();
           allOffline = applyLocalFilters(allOffline);
-
           if (allOffline.length > 0) {
-            allOffline.sort((a, b) => {
-              if (ordering === '-created') return new Date(b.created).getTime() - new Date(a.created).getTime();
-              if (ordering === 'created') return new Date(a.created).getTime() - new Date(b.created).getTime();
-              return 0;
-            });
-
-            const totalResults = allOffline.length;
-            const paginatedDocs = allOffline.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
-            if (page === 1) setDocs(paginatedDocs);
-            else setDocs(prev => [...prev, ...paginatedDocs]);
-
-            setHasMore(totalResults > page * PAGE_SIZE);
+            setDocs(sortOfflineDocs(allOffline));
+            setHasMore(false);
             setError(null);
             return;
           }
