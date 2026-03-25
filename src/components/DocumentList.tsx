@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'preact/hooks';
-import { apiSignal, filterSignal, failedDocsSignal } from '../store.ts';
+import { apiSignal, filterSignal, failedDocsSignal, duplicateDocsSignal } from '../store.ts';
 import { db } from '../db.ts';
 import { Thumbnail } from './Thumbnail.tsx';
 import { DocumentViewer } from './DocumentViewer.tsx';
@@ -158,21 +158,24 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
           ordering: ordering
         };
 
-        if (failedDocsSignal.value) {
-          params['id__in'] = failedDocsSignal.value.map(d => d.id).join(',');
-        }
-        
-        Object.entries(filters).forEach(([k, v]) => {
-           if (v !== undefined && v !== null && v !== '') params[k] = String(v);
-        });
-        
-        if (inboxOnly && Object.keys(filters).length === 0) {
-           const inboxTagId = Object.keys(meta.tags).find(k => 
-              (meta.tags as any)[parseInt(k)]?.toLowerCase().includes('inbox') || 
-              (meta.tags as any)[parseInt(k)]?.toLowerCase().includes('posteingang')
-           );
-           if (inboxTagId) params.tags__id__all = inboxTagId;
-           else params.tags__name__iexact = 'inbox';
+        const activeDiagnostic = failedDocsSignal.value || duplicateDocsSignal.value;
+
+        if (activeDiagnostic) {
+          params['id__in'] = activeDiagnostic.map(d => d.id).join(',');
+        } else {
+          // Standard filters only if NO diagnostic is active
+          Object.entries(filters).forEach(([k, v]) => {
+             if (v !== undefined && v !== null && v !== '') params[k] = String(v);
+          });
+          
+          if (inboxOnly) {
+             const inboxTagId = Object.keys(meta.tags).find(k => 
+                (meta.tags as any)[parseInt(k)]?.toLowerCase().includes('inbox') || 
+                (meta.tags as any)[parseInt(k)]?.toLowerCase().includes('posteingang')
+             );
+             if (inboxTagId) params.tags__id__all = inboxTagId;
+             else params.tags__name__iexact = 'inbox';
+          }
         }
         
         const result = await api.getDocuments(params);
@@ -221,11 +224,14 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
           } catch (dbErr) { }
         }
 
-        if (failedDocsSignal.value && page === 1) {
-          // If we have failure metadata, use it as a final fallback so the user sees something
-          setDocs(failedDocsSignal.value.map(f => ({ ...f, created: new Date().toISOString() })) as any);
+        const fallbackData = failedDocsSignal.value || duplicateDocsSignal.value;
+
+        if (fallbackData && page === 1) {
+          // If we have failure/duplicate metadata, use it as a final fallback
+          setDocs(fallbackData.map(f => ({ ...f, created: new Date().toISOString() })) as any);
           setHasMore(false);
-          setError(api ? 'Fehler beim Laden' : 'Offline: Zeige Metadaten der Fehler');
+          const type = failedDocsSignal.value ? 'Fehler' : 'Duplikate';
+          setError(api ? `Fehler beim Laden (${type})` : `Offline: Zeige Metadaten der ${type}`);
         } else {
           setError(api ? 'Fehler beim Laden' : 'Fehler beim Laden (Offline?)');
         }
@@ -240,7 +246,7 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
 
   useEffect(() => {
     setPage(1);
-  }, [apiSignal.value, inboxOnly, filterSignal.value, ordering, failedDocsSignal.value]);
+  }, [apiSignal.value, inboxOnly, filterSignal.value, ordering, failedDocsSignal.value, duplicateDocsSignal.value]);
 
   const observer = useRef<IntersectionObserver | null>(null);
   const lastElementRef = useCallback((node: HTMLDivElement | null) => {
@@ -309,6 +315,13 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
             <div style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', padding: '0.4rem 0.8rem', borderRadius: '20px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                ⚠️ {failedDocsSignal.value.length} Fehlerhafte Dokumente
                <button onClick={() => failedDocsSignal.value = null} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0 0.2rem', fontWeight: 'bold' }}>✕</button>
+            </div>
+          )}
+
+          {duplicateDocsSignal.value && (
+            <div style={{ background: 'rgba(59, 130, 246, 0.1)', color: 'var(--primary)', padding: '0.4rem 0.8rem', borderRadius: '20px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+               🔄 {duplicateDocsSignal.value.length} ID-Duplikate
+               <button onClick={() => duplicateDocsSignal.value = null} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', padding: '0 0.2rem', fontWeight: 'bold' }}>✕</button>
             </div>
           )}
 

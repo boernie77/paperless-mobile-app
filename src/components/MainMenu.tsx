@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'preact/hooks';
 import { Camera, CameraResultType } from '@capacitor/camera';
-import { authState, apiSignal, logout as logoutStore, filterSignal, failedDocsSignal } from '../store.ts';
+import { authState, apiSignal, logout as logoutStore, filterSignal, failedDocsSignal, duplicateDocsSignal } from '../store.ts';
 import { db } from '../db.ts';
 
 interface MainMenuProps {
@@ -251,11 +251,22 @@ export function MainMenu({ onClose }: MainMenuProps) {
       )}
 
       <button className="menu-button" onClick={() => { 
+        duplicateDocsSignal.value = null;
         failedDocsSignal.value = failedDocs.map(f => ({ id: f.id, title: f.title }));
         onClose(); 
       }} style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#ef4444' }}>
         Alle Fehler in Liste anzeigen
       </button>
+
+      {duplicateDocs.length > 0 && (
+        <button className="menu-button" onClick={() => { 
+          failedDocsSignal.value = null;
+          duplicateDocsSignal.value = duplicateDocs.map(d => ({ id: d.id, title: d.title }));
+          onClose(); 
+        }} style={{ background: 'rgba(59, 130, 246, 0.2)', color: 'var(--primary)', marginTop: '0.5rem' }}>
+          Alle Duplikate in Liste anzeigen
+        </button>
+      )}
 
       <button className="menu-button" onClick={() => { setView('menu'); setSyncReport(null); }} style={{ marginTop: '0.5rem' }}>
         Schließen

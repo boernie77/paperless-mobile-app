@@ -35,4 +35,5 @@ if (savedUrl && savedToken) {
 // Global filter state for DocumentList
 export const filterSignal = signal<Record<string, any>>({});
 export const failedDocsSignal = signal<{id: number, title: string}[] | null>(null);
+export const duplicateDocsSignal = signal<{id: number, title: string}[] | null>(null);
 
