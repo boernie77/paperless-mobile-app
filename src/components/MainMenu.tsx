@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'preact/hooks';
 import { Camera, CameraResultType } from '@capacitor/camera';
-import { apiSignal, logout, filterSignal } from '../store.ts';
+import { authState, apiSignal, logout as logoutStore, filterSignal, failedIdsSignal } from '../store.ts';
 import { db } from '../db.ts';
 
 interface MainMenuProps {
@@ -239,7 +239,14 @@ export function MainMenu({ onClose }: MainMenuProps) {
         </div>
       )}
 
-      <button className="menu-button" onClick={() => { setView('menu'); setSyncReport(null); }} style={{ marginTop: '1rem' }}>
+      <button className="menu-button" onClick={() => { 
+        failedIdsSignal.value = failedDocs.map(f => f.id);
+        onClose(); 
+      }} style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#ef4444' }}>
+        Alle Fehler in Liste anzeigen
+      </button>
+
+      <button className="menu-button" onClick={() => { setView('menu'); setSyncReport(null); }} style={{ marginTop: '0.5rem' }}>
         Schließen
       </button>
     </div>
@@ -339,7 +346,7 @@ export function MainMenu({ onClose }: MainMenuProps) {
                   <button className="menu-button" onClick={() => setView('about')} style={{ opacity: 0.7 }}>
                     <span className="icon">ℹ️</span> Über & Lizenzen
                   </button>
-                  <button className="menu-button logout-btn" onClick={logout} style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
+                  <button className="menu-button logout-btn" onClick={logoutStore} style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
                     <span className="icon">🚪</span> Abmelden
                   </button>
                </div>

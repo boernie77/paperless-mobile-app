@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'preact/hooks';
-import { apiSignal, filterSignal } from '../store.ts';
+import { apiSignal, filterSignal, failedIdsSignal } from '../store.ts';
 import { db } from '../db.ts';
 import { Thumbnail } from './Thumbnail.tsx';
 import { DocumentViewer } from './DocumentViewer.tsx';
@@ -157,6 +157,10 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
           page: String(page),
           ordering: ordering
         };
+
+        if (failedIdsSignal.value) {
+          params['id__in'] = failedIdsSignal.value.join(',');
+        }
         
         Object.entries(filters).forEach(([k, v]) => {
            if (v !== undefined && v !== null && v !== '') params[k] = String(v);
@@ -229,7 +233,7 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
   useEffect(() => {
     setPage(1);
     setDocs([]);
-  }, [inboxOnly, filterSignal.value, ordering]);
+  }, [apiSignal.value, inboxOnly, filterSignal.value, ordering, failedIdsSignal.value]);
 
   const observer = useRef<IntersectionObserver | null>(null);
   const lastElementRef = useCallback((node: HTMLDivElement | null) => {
@@ -293,7 +297,14 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
           </button>
         </div>
         
-        <div className="active-filters-row" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '-0.25rem', marginBottom: '0.5rem' }}>
+        <div className="active-filters-row" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
+          {failedIdsSignal.value && (
+            <div style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', padding: '0.4rem 0.8rem', borderRadius: '20px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+               ⚠️ {failedIdsSignal.value.length} Fehlerhafte Dokumente
+               <button onClick={() => failedIdsSignal.value = null} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0 0.2rem', fontWeight: 'bold' }}>✕</button>
+            </div>
+          )}
+
           {Object.keys(filterSignal.value).length > 0 && (
             <span className="tag-pill" 
               style={{ background: 'var(--primary)', color: 'white', fontWeight: 'bold' }}
