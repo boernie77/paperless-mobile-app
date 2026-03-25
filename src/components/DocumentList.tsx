@@ -210,19 +210,31 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
         }
       } catch (err) {
         console.error('Fetch error:', err);
-        if (page === 1) {
-          try {
-            const offlineDocs = await db.documents.where('is_offline').equals(1).toArray();
-            if (offlineDocs.length > 0) {
-              setDocs(applyLocalFilters(offlineDocs));
-              setHasMore(false);
-              setError(null);
-              setLoading(false);
-              setIsLoadingMore(false);
-              return;
-            }
-          } catch (dbErr) { }
-        }
+
+        // Offline fallback with proper pagination for any page
+        try {
+          const PAGE_SIZE = 25;
+          let allOffline = await db.documents.where('is_offline').equals(1).toArray();
+          allOffline = applyLocalFilters(allOffline);
+
+          if (allOffline.length > 0) {
+            allOffline.sort((a, b) => {
+              if (ordering === '-created') return new Date(b.created).getTime() - new Date(a.created).getTime();
+              if (ordering === 'created') return new Date(a.created).getTime() - new Date(b.created).getTime();
+              return 0;
+            });
+
+            const totalResults = allOffline.length;
+            const paginatedDocs = allOffline.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+            if (page === 1) setDocs(paginatedDocs);
+            else setDocs(prev => [...prev, ...paginatedDocs]);
+
+            setHasMore(totalResults > page * PAGE_SIZE);
+            setError(null);
+            return;
+          }
+        } catch (dbErr) { }
 
         const fallbackData = failedDocsSignal.value || duplicateDocsSignal.value;
 
