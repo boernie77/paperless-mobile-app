@@ -136,21 +136,33 @@ export function MainMenu({ onClose }: MainMenuProps) {
       });
       
       const uniqueDocs = Array.from(uniqueDocsMap.values());
+      const serverIds = new Set(uniqueDocs.map((d: any) => d.id));
       const totalToSync = uniqueDocs.length;
       let count = 0;
       let skipped = 0;
       const failures: any[] = [];
-      
+
       setFailedDocs([]);
       setDuplicateDocs(duplicateList);
       setSyncReport(null);
+
+      // Remove locally cached docs that no longer exist on the server
+      if (!selectionOnly) {
+        setStatus('Prüfe gelöschte Dokumente...');
+        const localDocs = await db.documents.toArray();
+        const deletedIds = localDocs.filter((d: any) => !serverIds.has(d.id)).map((d: any) => d.id);
+        if (deletedIds.length > 0) {
+          await db.documents.bulkDelete(deletedIds);
+        }
+      }
 
       for (const doc of uniqueDocs) {
         setStatus(`Synchronisierung: ${count + 1 + skipped} von ${totalToSync} (Fehlgeschlagen: ${failures.length})`);
         try {
            const existing = await db.documents.get(doc.id);
            if (existing?.blob && existing?.thumbnailBlob) {
-             if (existing.is_offline !== 1) await db.documents.update(doc.id, { is_offline: 1 });
+             // Update metadata (tags, correspondent, title, etc.) but keep existing blobs
+             await db.documents.put({ ...doc, blob: existing.blob, thumbnailBlob: existing.thumbnailBlob, is_offline: 1 });
              count++;
              continue;
            }
@@ -164,10 +176,10 @@ export function MainMenu({ onClose }: MainMenuProps) {
            updateStats();
         } catch(e) {
            console.error(`Failed to download doc ${doc.id}`, e);
-           failures.push({ 
-             id: doc.id, 
-             title: doc.title, 
-             reason: e instanceof Error ? e.message : 'Unbekannter Fehler' 
+           failures.push({
+             id: doc.id,
+             title: doc.title,
+             reason: e instanceof Error ? e.message : 'Unbekannter Fehler'
            });
         }
       }
