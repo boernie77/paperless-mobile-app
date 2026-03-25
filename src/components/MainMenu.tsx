@@ -8,8 +8,9 @@ interface MainMenuProps {
 }
 
 export function MainMenu({ onClose }: MainMenuProps) {
-  const [autoDownload, setAutoDownload] = useState<boolean>(false);
+  const [autoDownload, setAutoDownload] = useState(false);
   const [failedDocs, setFailedDocs] = useState<any[]>([]);
+  const [duplicateDocs, setDuplicateDocs] = useState<any[]>([]);
   const [syncReport, setSyncReport] = useState<any>(null);
   const [view, setView] = useState<'menu' | 'about' | 'report'>('menu');
   const [status, setStatus] = useState('');
@@ -116,21 +117,32 @@ export function MainMenu({ onClose }: MainMenuProps) {
 
     try {
       setStatus('Lade Dokumentenliste...');
-      let allDocs = selectionOnly ? filterSignal.value : await api.getAllDocuments();
+      const apiResult = selectionOnly ? { results: filterSignal.value, count: (filterSignal.value as any[]).length } : await api.getAllDocuments();
+      let allDocs = apiResult.results;
+      const totalServerCount = apiResult.count;
       
-      // Deduplicate by ID
+      // Deduplicate by ID and track duplicates
       const uniqueDocsMap = new Map();
-      (Array.isArray(allDocs) ? allDocs : (allDocs as any).results || []).forEach((d: any) => {
-        if (d && d.id) uniqueDocsMap.set(d.id, d);
-      });
-      const uniqueDocs = Array.from(uniqueDocsMap.values());
+      const duplicateList: any[] = [];
       
+      (Array.isArray(allDocs) ? allDocs : []).forEach((d: any) => {
+        if (d && d.id) {
+          if (uniqueDocsMap.has(d.id)) {
+            duplicateList.push(d);
+          } else {
+            uniqueDocsMap.set(d.id, d);
+          }
+        }
+      });
+      
+      const uniqueDocs = Array.from(uniqueDocsMap.values());
       const totalToSync = uniqueDocs.length;
       let count = 0;
       let skipped = 0;
       const failures: any[] = [];
       
       setFailedDocs([]);
+      setDuplicateDocs(duplicateList);
       setSyncReport(null);
 
       for (const doc of uniqueDocs) {
@@ -167,8 +179,10 @@ export function MainMenu({ onClose }: MainMenuProps) {
       setFailedDocs(failures);
       setSyncReport({
         total: totalToSync,
+        serverTotal: totalServerCount,
         success: count,
-        failed: failures.length
+        failed: failures.length,
+        duplicates: duplicateList.length
       });
       setView('report');
       setStatus('');
@@ -209,30 +223,27 @@ export function MainMenu({ onClose }: MainMenuProps) {
         <p style={{ margin: 0, opacity: 0.8 }}>
           {syncReport?.success} von {syncReport?.total} erfolgreich gespeichert.
         </p>
+        {(syncReport?.total !== syncReport?.serverTotal) && (
+          <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.75rem', color: '#fb923c' }}>
+            ⚠️ Hinweis: Server meldet {syncReport?.serverTotal} Dokumente, aber nur {syncReport?.total} einzigartige IDs gefunden.
+          </p>
+        )}
       </div>
 
-      {failedDocs.length > 0 && (
+      {(failedDocs.length > 0 || duplicateDocs.length > 0) && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          <h4 style={{ margin: '0.5rem 0' }}>Fehlgeschlagene Dokumente:</h4>
+          <h4 style={{ margin: '0.5rem 0' }}>Details zu Abweichungen:</h4>
           <div style={{ maxHeight: '300px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             {failedDocs.map(f => (
-              <div 
-                key={f.id} 
-                onClick={() => { 
-                   // Logic to view the document: we need to find it in the list or trigger something
-                   // For now, let's just close and hope it's in the list
-                   onClose(); 
-                }}
-                style={{ 
-                  padding: '0.75rem', 
-                  background: 'rgba(239, 68, 68, 0.1)', 
-                  borderRadius: '8px', 
-                  cursor: 'pointer',
-                  fontSize: '0.9rem'
-                }}
-              >
-                <div style={{ fontWeight: 'bold', color: '#ef4444' }}>{f.title}</div>
-                <div style={{ fontSize: '0.75rem', opacity: 0.7 }}>ID: {f.id} - {f.reason}</div>
+              <div key={`fail-${f.id}`} onClick={onClose} style={{ padding: '0.75rem', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '8px', cursor: 'pointer', fontSize: '0.9rem' }}>
+                <div style={{ fontWeight: 'bold', color: '#ef4444' }}>❌ {f.title}</div>
+                <div style={{ fontSize: '0.75rem', opacity: 0.7 }}>Fehler: {f.reason}</div>
+              </div>
+            ))}
+            {duplicateDocs.map(d => (
+              <div key={`dup-${d.id}-${Math.random()}`} onClick={onClose} style={{ padding: '0.75rem', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '8px', cursor: 'pointer', fontSize: '0.9rem' }}>
+                <div style={{ fontWeight: 'bold', color: 'var(--primary)' }}>🔄 Duplikat: {d.title}</div>
+                <div style={{ fontSize: '0.75rem', opacity: 0.7 }}>ID {d.id} wurde mehrfach vom Server gemeldet.</div>
               </div>
             ))}
           </div>
