@@ -62,6 +62,23 @@ export class PaperlessAPI {
     return this.request(endpoint);
   }
 
+  async getAllDocuments(): Promise<any[]> {
+    let allResults: any[] = [];
+    let page = 1;
+    while (true) {
+      const response = await this.getDocuments({ 
+        page: String(page), 
+        page_size: '50' 
+      });
+      allResults = [...allResults, ...response.results];
+      if (!response.next) break;
+      page++;
+      // Safety break to avoid infinite loop
+      if (page > 200) break;
+    }
+    return allResults;
+  }
+
   async getDocument(id: number) {
     return this.request(`documents/${id}/`);
   }

@@ -16,15 +16,21 @@ export function MainMenu({ onClose }: MainMenuProps) {
   const [offlineCount, setOfflineCount] = useState<number | null>(null);
   const [autoDownload, setAutoDownload] = useState<boolean>(false);
 
+  const updateStats = async () => {
+    try {
+      const count = await db.documents.where('is_offline').equals(1).count();
+      setOfflineCount(count);
+    } catch (e) {
+      console.error('UpdateStats failed:', e);
+    }
+  };
+
   useEffect(() => {
     let active = true;
-    const fetchStats = async () => {
+    const fetchSettings = async () => {
       try {
-        // Count offline docs
-        const count = await db.documents.filter(d => !!d.blob).count();
-        if (active) setOfflineCount(count);
+        await updateStats();
         
-        // Get auto-download setting
         const setting = await db.settings.get('auto_download');
         if (active) setAutoDownload(!!setting?.value);
 
@@ -33,11 +39,9 @@ export function MainMenu({ onClose }: MainMenuProps) {
           const res = await api.getDocuments({ page_size: '1' });
           if (active) setEstimatedSizeMb(Math.round(res.count * 1.5 * 10) / 10);
         }
-      } catch (err) {
-        // Fallback or ignore
-      }
+      } catch (err) { }
     };
-    fetchStats();
+    fetchSettings();
     return () => { active = false; };
   }, [apiSignal.value]);
 
@@ -57,97 +61,74 @@ export function MainMenu({ onClose }: MainMenuProps) {
 
       if (image.webPath) {
         setUploading(true);
-        setStatus('Scan wird hochgeladen...');
+        setStatus('Lade Foto hoch...');
+        const api = apiSignal.value;
+        if (!api) return;
+
         const response = await fetch(image.webPath);
         const blob = await response.blob();
-        
-        const api = apiSignal.value;
-        if (api) {
-          const fileName = `Scan_${new Date().getTime()}.jpg`;
-          await api.uploadDocument(blob, fileName);
-          setStatus('Erfolgreich hochgeladen!');
-        }
+        await api.uploadDocument(blob, `Foto ${new Date().toLocaleString()}`);
+        setStatus('Erfolgreich hochgeladen!');
       }
     } catch (err) {
       console.error(err);
-      if (!String(err).includes('User cancelled')) {
-        setStatus('Fehler beim Scan-Upload.');
-      }
+      setStatus('Fehler beim Upload.');
     } finally {
       setTimeout(() => setStatus(''), 3000);
       setUploading(false);
     }
   };
 
-  const importFile = () => {
+  const importFile = async () => {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'application/pdf,image/*';
     input.onchange = async (e: any) => {
       const file = e.target.files[0];
-      if (file) {
-        setUploading(true);
-        setStatus(`Lade '${file.name}' hoch...`);
-        try {
-          const api = apiSignal.value;
-          if (api) {
-            await api.uploadDocument(file, file.name || `Import_${new Date().getTime()}`);
-            setStatus('Erfolgreich importiert!');
-          }
-        } catch (err) {
-          setStatus('Fehler beim Importieren.');
-        } finally {
-          setTimeout(() => setStatus(''), 3000);
-          setUploading(false);
-        }
+      if (!file) return;
+
+      setUploading(true);
+      setStatus('Lade Datei hoch...');
+      const api = apiSignal.value;
+      if (!api) return;
+
+      try {
+        await api.uploadDocument(file, file.name);
+        setStatus('Datei erfolgreich hochgeladen!');
+      } catch (err) {
+        setStatus('Fehler beim Upload.');
+      } finally {
+        setTimeout(() => setStatus(''), 3000);
+        setUploading(false);
       }
     };
     input.click();
   };
 
-  const downloadAll = async (useFilters = false) => {
+  const downloadAll = async (selectionOnly = false) => {
     const api = apiSignal.value;
     if (!api) return;
-    
-    setDownloading(true);
-    setStatus(useFilters ? 'Lade Auswahl herunter...' : 'Starte vollständige Synchronisation...');
-    
-    try {
-      const allDocs: any[] = [];
-      let nextUrl: string | null = 'documents/';
-      
-      const params: any = useFilters ? { ...filterSignal.value } : {};
-      
-      while (nextUrl) {
-        setStatus(`Rufe Dokumentenliste ab... (${allDocs.length} gefunden)`);
-        
-        // Extract params from nextUrl if it's a full URL
-        let fetchParams: any = {};
-        if (nextUrl === 'documents/') {
-          fetchParams = params;
-        } else if (nextUrl.includes('?')) {
-          const queryString = nextUrl.split('?')[1];
-          const urlParams = new URLSearchParams(queryString);
-          fetchParams = Object.fromEntries(urlParams.entries());
-        }
 
-        const result: any = await api.getDocuments(fetchParams);
-        allDocs.push(...result.results);
-        nextUrl = result.next;
-        
-        // Safety limit increased to something high but reasonable for mobile memory
-        if (allDocs.length > 20000) {
-           console.warn('Sync limit of 20,000 documents reached. Stopping to prevent memory issues.');
-           break;
-        }
+    setDownloading(true);
+    setStatus('Vorbereiten...');
+
+    try {
+      let allDocs = [];
+      if (selectionOnly) {
+         const res = await api.getDocuments(filterSignal.value);
+         allDocs = res.results;
+      } else {
+         allDocs = await api.getAllDocuments();
       }
 
       let count = 0;
+      let skipped = 0;
       for (const doc of allDocs) {
-        setStatus(`Synchronisierung: ${count + 1} von ${allDocs.length}`);
+        setStatus(`Synchronisierung: ${count + 1} von ${allDocs.length} (Fehlgeschlagen: ${skipped})`);
         try {
            const existing = await db.documents.get(doc.id);
            if (existing?.blob && existing?.thumbnailBlob) {
+             if (existing.is_offline !== 1) await db.documents.update(doc.id, { is_offline: 1 });
              count++;
              continue;
            }
@@ -156,14 +137,16 @@ export function MainMenu({ onClose }: MainMenuProps) {
              api.downloadDocument(doc.id),
              api.getThumbnailBlob(doc.id)
            ]);
-           await db.documents.put({ ...doc, blob, thumbnailBlob });
+           await db.documents.put({ ...doc, blob, thumbnailBlob, is_offline: 1 });
            count++;
+           updateStats();
         } catch(e) {
            console.error(`Failed to download doc ${doc.id}`, e);
+           skipped++;
         }
       }
       
-      setStatus(`Erfolgreich: ${count} Dokumente offline gespeichert.`);
+      setStatus(`Erfolgreich: ${count} Dokumente offline. Übersprungen: ${skipped}.`);
     } catch (err) {
       console.error(err);
       setStatus('Synchronisation fehlgeschlagen.');
@@ -178,11 +161,6 @@ export function MainMenu({ onClose }: MainMenuProps) {
   const renderAbout = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', animation: 'fadeIn 0.3s', paddingBottom: '2rem' }}>
       <button className="header-button" onClick={() => setView('menu')}>← Zurück</button>
-      
-      <div className="filter-section">
-        <h3>App Version</h3>
-        <p style={{ margin: 0 }}>v1.3.5 stable</p>
-      </div>
 
       <div className="filter-section">
         <h3>Lizenzen</h3>
@@ -211,14 +189,7 @@ export function MainMenu({ onClose }: MainMenuProps) {
       <div className="filter-section">
         <h3>Datenschutz</h3>
         <p style={{ margin: 0, fontSize: '0.85rem', lineHeight: '1.4' }}>
-          Die Betreiber dieser App nehmen den Schutz Ihrer persönlichen Daten sehr ernst. Wir behandeln Ihre personenbezogenen Daten vertraulich und entsprechend der gesetzlichen Datenschutzvorschriften sowie dieser Datenschutzerklärung. Die Nutzung dieser App ist in der Regel ohne Angabe personenbezogener Daten möglich.
-        </p>
-      </div>
-
-      <div className="filter-section">
-        <h3>Hinweis</h3>
-        <p style={{ margin: 0, fontSize: '0.85rem', lineHeight: '1.4' }}>
-          Dies ist ein Drittanbieter-Interface für Paperless-ngx. Es besteht keine offizielle Verbindung zum Paperless-ngx Team.
+          Die Betreiber dieser App nehmen den Schutz Ihrer persönlichen Daten sehr ernst. Wir behandeln Ihre personenbezogenen Daten vertraulich und entsprechend der gesetzlichen Datenschutzvorschriften sowie dieser Datenschutzerklärung.
         </p>
       </div>
     </div>
@@ -234,7 +205,7 @@ export function MainMenu({ onClose }: MainMenuProps) {
 
         <div style={{ flex: '1 1 0', minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {view === 'menu' ? (
-            <div className="menu-items" style={{ flex: 1 }}>
+            <div className="menu-items" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
               <button className="menu-button" onClick={takePhoto} disabled={uploading || downloading}>
                 <span className="icon">📷</span> Foto aufnehmen
               </button>
@@ -277,6 +248,9 @@ export function MainMenu({ onClose }: MainMenuProps) {
                  <button className="menu-button logout-btn" onClick={logout} style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
                    <span className="icon">🚪</span> Abmelden
                  </button>
+                 <div style={{ marginTop: '0.5rem', opacity: 0.5, fontSize: '0.75rem', textAlign: 'center' }}>
+                    Version v1.3.7 stable
+                 </div>
               </div>
             </div>
           ) : renderAbout()}

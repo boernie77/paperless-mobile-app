@@ -12,6 +12,7 @@ export interface OfflineDocument {
   tags: number[];
   blob?: Blob;
   thumbnailBlob?: Blob;
+  is_offline?: number; // 0 or 1 for indexing
 }
 
 export interface OfflineMetadata {
@@ -30,8 +31,13 @@ export class PaperlessDB extends Dexie {
 
   constructor() {
     super('PaperlessDB');
+    this.version(1).stores({
+      documents: 'id, title, created, correspondent, document_type',
+      settings: 'key',
+      metadata: 'key'
+    });
     this.version(2).stores({
-      documents: 'id, title, correspondent, document_type, *tags',
+      documents: 'id, title, correspondent, document_type, tags, is_offline',
       tags: 'id, name',
       correspondents: 'id, name',
       documentTypes: 'id, name',
