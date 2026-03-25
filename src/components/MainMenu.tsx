@@ -364,7 +364,7 @@ export function MainMenu({ onClose }: MainMenuProps) {
               <hr className="menu-divider" />
               <div className="menu-info-block">
                 <button className="menu-button" onClick={() => downloadAll(false)} disabled={uploading || downloading}>
-                  <span className="icon">☁️</span> Alle offline verfügbar machen
+                  <span className="icon">☁️</span> Sync & alle offline verfügbar machen
                 </button>
                 {Object.keys(filterSignal.value).length > 0 && (
                   <button className="menu-button" onClick={() => downloadAll(true)} disabled={uploading || downloading} style={{ background: 'rgba(59, 130, 246, 0.2)' }}>
