@@ -8,13 +8,15 @@ interface MainMenuProps {
 }
 
 export function MainMenu({ onClose }: MainMenuProps) {
-  const [view, setView] = useState<'menu' | 'about'>('menu');
+  const [autoDownload, setAutoDownload] = useState<boolean>(false);
+  const [failedDocs, setFailedDocs] = useState<any[]>([]);
+  const [syncReport, setSyncReport] = useState<any>(null);
+  const [view, setView] = useState<'menu' | 'about' | 'report'>('menu');
   const [status, setStatus] = useState('');
   const [uploading, setUploading] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [estimatedSizeMb, setEstimatedSizeMb] = useState<number | null>(null);
   const [offlineCount, setOfflineCount] = useState<number | null>(null);
-  const [autoDownload, setAutoDownload] = useState<boolean>(false);
 
   const updateStats = async () => {
     try {
@@ -113,18 +115,26 @@ export function MainMenu({ onClose }: MainMenuProps) {
     setStatus('Vorbereiten...');
 
     try {
-      let allDocs = [];
-      if (selectionOnly) {
-         const res = await api.getDocuments(filterSignal.value);
-         allDocs = res.results;
-      } else {
-         allDocs = await api.getAllDocuments();
-      }
-
+      setStatus('Lade Dokumentenliste...');
+      let allDocs = selectionOnly ? filterSignal.value : await api.getAllDocuments();
+      
+      // Deduplicate by ID
+      const uniqueDocsMap = new Map();
+      (Array.isArray(allDocs) ? allDocs : (allDocs as any).results || []).forEach((d: any) => {
+        if (d && d.id) uniqueDocsMap.set(d.id, d);
+      });
+      const uniqueDocs = Array.from(uniqueDocsMap.values());
+      
+      const totalToSync = uniqueDocs.length;
       let count = 0;
       let skipped = 0;
-      for (const doc of allDocs) {
-        setStatus(`Synchronisierung: ${count + 1} von ${allDocs.length} (Fehlgeschlagen: ${skipped})`);
+      const failures: any[] = [];
+      
+      setFailedDocs([]);
+      setSyncReport(null);
+
+      for (const doc of uniqueDocs) {
+        setStatus(`Synchronisierung: ${count + 1 + skipped} von ${totalToSync} (Fehlgeschlagen: ${failures.length})`);
         try {
            const existing = await db.documents.get(doc.id);
            if (existing?.blob && existing?.thumbnailBlob) {
@@ -142,19 +152,31 @@ export function MainMenu({ onClose }: MainMenuProps) {
            updateStats();
         } catch(e) {
            console.error(`Failed to download doc ${doc.id}`, e);
-           skipped++;
+           failures.push({ 
+             id: doc.id, 
+             title: doc.title, 
+             reason: e instanceof Error ? e.message : 'Unbekannter Fehler' 
+           });
         }
       }
       
-      setStatus(`Erfolgreich: ${count} Dokumente offline. Übersprungen: ${skipped}.`);
+      await updateStats();
+      const finalCount = await db.documents.where('is_offline').equals(1).count();
+      setOfflineCount(finalCount);
+      
+      setFailedDocs(failures);
+      setSyncReport({
+        total: totalToSync,
+        success: count,
+        failed: failures.length
+      });
+      setView('report');
+      setStatus('');
     } catch (err) {
       console.error(err);
       setStatus('Synchronisation fehlgeschlagen.');
     } finally {
-      setTimeout(() => {
-        setStatus('');
-        setDownloading(false);
-      }, 3000);
+      setDownloading(false);
     }
   };
 
@@ -177,6 +199,51 @@ export function MainMenu({ onClose }: MainMenuProps) {
       setTimeout(() => setStatus(''), 3000);
     }
   };
+
+  const renderSyncReport = () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', animation: 'fadeIn 0.3s', paddingBottom: '2rem' }}>
+      <div style={{ textAlign: 'center', padding: '1rem', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '12px' }}>
+        <h3 style={{ margin: '0 0 0.5rem 0', color: syncReport?.failed > 0 ? '#ef4444' : 'var(--primary)' }}>
+          {syncReport?.failed > 0 ? 'Synchronisierung unvollständig' : 'Synchronisierung abgeschlossen'}
+        </h3>
+        <p style={{ margin: 0, opacity: 0.8 }}>
+          {syncReport?.success} von {syncReport?.total} erfolgreich gespeichert.
+        </p>
+      </div>
+
+      {failedDocs.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <h4 style={{ margin: '0.5rem 0' }}>Fehlgeschlagene Dokumente:</h4>
+          <div style={{ maxHeight: '300px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {failedDocs.map(f => (
+              <div 
+                key={f.id} 
+                onClick={() => { 
+                   // Logic to view the document: we need to find it in the list or trigger something
+                   // For now, let's just close and hope it's in the list
+                   onClose(); 
+                }}
+                style={{ 
+                  padding: '0.75rem', 
+                  background: 'rgba(239, 68, 68, 0.1)', 
+                  borderRadius: '8px', 
+                  cursor: 'pointer',
+                  fontSize: '0.9rem'
+                }}
+              >
+                <div style={{ fontWeight: 'bold', color: '#ef4444' }}>{f.title}</div>
+                <div style={{ fontSize: '0.75rem', opacity: 0.7 }}>ID: {f.id} - {f.reason}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <button className="menu-button" onClick={() => { setView('menu'); setSyncReport(null); }} style={{ marginTop: '1rem' }}>
+        Schließen
+      </button>
+    </div>
+  );
 
   const renderAbout = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', animation: 'fadeIn 0.3s', paddingBottom: '2rem' }}>
@@ -220,7 +287,9 @@ export function MainMenu({ onClose }: MainMenuProps) {
       <div className="main-menu" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <h2>{view === 'menu' ? 'Menü' : 'Über & Lizenzen'}</h2>
+            <h2>
+              {view === 'menu' ? 'Menü' : (view === 'about' ? 'Über & Lizenzen' : 'Synchronisierungs-Bericht')}
+            </h2>
             <span style={{ fontSize: '0.8rem', opacity: 0.5, marginTop: '0.2rem' }}>v1.0.1</span>
           </div>
           <button className="close-button" onClick={onClose} disabled={uploading || downloading}>✕</button>
@@ -266,17 +335,16 @@ export function MainMenu({ onClose }: MainMenuProps) {
                 </button>
                 <p className="menu-hint">Hinweis: Dies erfordert insgesamt ca. {estimatedSizeMb !== null ? estimatedSizeMb : '?'} MB Speicherplatz auf deinem Gerät.</p>
               </div>
-              
-              <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingBottom: '1rem' }}>
-                 <button className="menu-button" onClick={() => setView('about')} style={{ opacity: 0.7 }}>
-                   <span className="icon">ℹ️</span> Über & Lizenzen
-                 </button>
-                 <button className="menu-button logout-btn" onClick={logout} style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
-                   <span className="icon">🚪</span> Abmelden
-                 </button>
-              </div>
+                            <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingBottom: '1rem' }}>
+                  <button className="menu-button" onClick={() => setView('about')} style={{ opacity: 0.7 }}>
+                    <span className="icon">ℹ️</span> Über & Lizenzen
+                  </button>
+                  <button className="menu-button logout-btn" onClick={logout} style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
+                    <span className="icon">🚪</span> Abmelden
+                  </button>
+               </div>
             </div>
-          ) : renderAbout()}
+          ) : (view === 'about' ? renderAbout() : renderSyncReport())}
         </div>
         
         {status && (
