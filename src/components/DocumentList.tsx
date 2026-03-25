@@ -172,6 +172,7 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
         }
         
         const result = await api.getDocuments(params);
+        console.log(`Loaded page ${page}, total count: ${result.count}, results: ${result.results.length}`);
         const newDocs = result.results;
         
         // Enrich with local offline data
@@ -307,12 +308,12 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
             </span>
           )}
 
-          {Object.keys(filterSignal.value).length > 0 && (
+          {(search || Object.keys(filterSignal.value).length > 0) && (
             <button 
-              onClick={() => { filterSignal.value = {}; }} 
+              onClick={() => { filterSignal.value = {}; setSearch(''); (document.querySelector('input[type="search"]') as any).value = ''; }} 
               style={{ background: 'none', border: 'none', color: 'var(--primary)', padding: '0', fontSize: '0.85rem', cursor: 'pointer', textDecoration: 'underline', marginLeft: 'auto' }}
             >
-              Alle Filter löschen
+              Suche & Filter löschen
             </button>
           )}
         </div>

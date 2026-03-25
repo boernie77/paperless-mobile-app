@@ -158,6 +158,26 @@ export function MainMenu({ onClose }: MainMenuProps) {
     }
   };
 
+  const clearOfflineCache = async () => {
+    if (!confirm('Möchtest du wirklich alle Offline-Dateien vom Gerät löschen? (Die Dokumente bleiben auf dem Server erhalten)')) return;
+    
+    setStatus('Lösche Cache...');
+    try {
+      await db.documents.where('is_offline').equals(1).modify({
+        blob: undefined,
+        thumbnailBlob: undefined,
+        is_offline: 0
+      });
+      await updateStats();
+      setStatus('Cache erfolgreich geleert!');
+    } catch (e) {
+      console.error(e);
+      setStatus('Fehler beim Löschen des Cache.');
+    } finally {
+      setTimeout(() => setStatus(''), 3000);
+    }
+  };
+
   const renderAbout = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', animation: 'fadeIn 0.3s', paddingBottom: '2rem' }}>
       <button className="header-button" onClick={() => setView('menu')}>← Zurück</button>
@@ -199,7 +219,10 @@ export function MainMenu({ onClose }: MainMenuProps) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="main-menu" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>{view === 'menu' ? 'Menü' : 'Über & Lizenzen'}</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <h2>{view === 'menu' ? 'Menü' : 'Über & Lizenzen'}</h2>
+            <span style={{ fontSize: '0.8rem', opacity: 0.5, marginTop: '0.2rem' }}>v1.0.1</span>
+          </div>
           <button className="close-button" onClick={onClose} disabled={uploading || downloading}>✕</button>
         </div>
 
@@ -238,6 +261,9 @@ export function MainMenu({ onClose }: MainMenuProps) {
                     <span className="icon">🔍</span> Auswahl laden
                   </button>
                 )}
+                <button className="menu-button" onClick={clearOfflineCache} disabled={uploading || downloading || offlineCount === 0} style={{ opacity: 0.8 }}>
+                  <span className="icon">🗑️</span> Offline-Dateien löschen
+                </button>
                 <p className="menu-hint">Hinweis: Dies erfordert insgesamt ca. {estimatedSizeMb !== null ? estimatedSizeMb : '?'} MB Speicherplatz auf deinem Gerät.</p>
               </div>
               
@@ -248,9 +274,6 @@ export function MainMenu({ onClose }: MainMenuProps) {
                  <button className="menu-button logout-btn" onClick={logout} style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
                    <span className="icon">🚪</span> Abmelden
                  </button>
-                 <div style={{ marginTop: '0.5rem', opacity: 0.5, fontSize: '0.75rem', textAlign: 'center' }}>
-                    Version v1.3.7 stable
-                 </div>
               </div>
             </div>
           ) : renderAbout()}
