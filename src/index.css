@@ -253,11 +253,12 @@ input:focus {
 
 
 .app-main {
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
   max-width: 1200px;
   margin: 0 auto;
+  overflow: hidden;
 }
 
 header {
@@ -271,7 +272,7 @@ header {
   z-index: 100;
 }
 
-main { flex: 1; padding: 1rem; }
+main { flex: 1; padding: 1rem; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 
 .bottom-nav {
   display: flex;
@@ -281,8 +282,10 @@ main { flex: 1; padding: 1rem; }
   background: var(--surface);
   backdrop-filter: blur(10px);
   border-top: 1px solid var(--glass-border);
-  position: sticky;
+  position: relative;
   bottom: 0;
+  z-index: 10;
+  flex-shrink: 0;
 }
 
 .nav-item {
@@ -387,8 +390,7 @@ main { flex: 1; padding: 1rem; }
   padding: 1.5rem;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-  overflow-y: auto;
+  overflow-y: hidden;
   border-left: 1px solid var(--glass-border);
   box-shadow: -10px 0 25px rgba(0,0,0,0.5);
   animation: slideLeft 0.3s ease-out;
@@ -442,6 +444,7 @@ main { flex: 1; padding: 1rem; }
   margin-top: auto; 
   padding-top: 1rem;
   padding-bottom: var(--safe-area-bottom);
+  flex-shrink: 0;
 }
 .filter-actions .btn { flex: 1; min-height: 48px; }
 

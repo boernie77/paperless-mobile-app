@@ -22,6 +22,7 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
   const [ordering, setOrdering] = useState('-created');
   const [selectedDoc, setSelectedDoc] = useState<any>(null);
   const [showSortModal, setShowSortModal] = useState(false);
+  const [autoDownload, setAutoDownload] = useState(false);
 
   // Metadata Fetching
   useEffect(() => {
@@ -61,6 +62,12 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
       }
     };
     fetchMetadata();
+    
+    const checkSettings = async () => {
+      const setting = await db.settings.get('auto_download');
+      setAutoDownload(!!setting?.value);
+    };
+    checkSettings();
   }, [apiSignal.value]);
 
   // Main Document fetching
@@ -158,6 +165,22 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
         }
         
         setHasMore(!!result.next);
+
+        // Auto-download logic
+        if (autoDownload && api) {
+          for (const doc of filteredNewDocs) {
+            if (!doc.blob) {
+              // Trigger background download (don't await to avoid blocking UI)
+              Promise.all([
+                api.downloadDocument(doc.id),
+                api.getThumbnailBlob(doc.id)
+              ]).then(async ([blob, thumbnailBlob]) => {
+                await db.documents.put({ ...doc, blob, thumbnailBlob });
+                setDocs(prev => prev.map(d => d.id === doc.id ? { ...d, blob, thumbnailBlob } : d));
+              }).catch(() => {});
+            }
+          }
+        }
       } catch (err) {
         console.error('Fetch failed', err);
         if (page === 1) {
@@ -199,10 +222,13 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
     if (!api) return;
 
     try {
-      const blob = await api.downloadDocument(doc.id);
-      await db.documents.update(doc.id, { blob });
+      const [blob, thumbnailBlob] = await Promise.all([
+        api.downloadDocument(doc.id),
+        api.getThumbnailBlob(doc.id) 
+      ]);
+      await db.documents.put({ ...doc, blob, thumbnailBlob });
       alert(doc.title + ' ist jetzt offline verfügbar.');
-      setDocs(docs.map(d => d.id === doc.id ? { ...d, blob } : d));
+      setDocs(docs.map(d => d.id === doc.id ? { ...d, blob, thumbnailBlob } : d));
     } catch (err) {
       alert('Download fehlgeschlagen.');
     }
@@ -223,38 +249,46 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
   return (
     <div className="document-container">
       <div className="search-bar" style={{ display: 'flex', gap: '0.5rem', flexDirection: 'column' }}>
-        <div style={{ display: 'flex', gap: '0.5rem', width: '100%' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', width: '100%', marginBottom: '0.5rem' }}>
           <input 
             type="search" 
             placeholder="Suchen..." 
             onInput={(e) => setSearch((e.target as HTMLInputElement).value)}
-            style={{ flex: 1 }}
+            style={{ flex: 1, padding: '0.9rem 1.2rem' }}
           />
           <button 
             onClick={() => setShowSortModal(true)}
             className="filter-input"
-            style={{ width: 'auto', background: 'var(--surface)', cursor: 'pointer', padding: '0.8rem 0.6rem', display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap' }}
+            style={{ width: 'auto', background: 'var(--surface)', cursor: 'pointer', padding: '0.9rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap', fontSize: '1.2rem' }}
           >
             <span>⇅</span>
           </button>
         </div>
         
-        {Object.keys(filterSignal.value).length > 0 && (
-          <div className="active-filters-row" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '-0.25rem', marginBottom: '0.25rem' }}>
+        <div className="active-filters-row" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '-0.25rem', marginBottom: '0.5rem' }}>
+          {Object.keys(filterSignal.value).length > 0 && (
             <span className="tag-pill" 
-              style={{ background: 'var(--primary)', color: 'white', fontWeight: 'bold', cursor: 'help' }}
-              onClick={() => alert(`DEBUG INFO:\nFilters: ${JSON.stringify(filterSignal.value)}\nDocs: ${docs.length}\nAPI: ${apiSignal.value ? 'Online' : 'Offline'}`)}
+              style={{ background: 'var(--primary)', color: 'white', fontWeight: 'bold' }}
             >
-              Filter aktiv (!)
+              Filter aktiv
             </span>
+          )}
+          
+          {(search || Object.keys(filterSignal.value).length > 0) && (
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-dim)', fontWeight: '500' }}>
+              {filteredDocs.length} Treffer
+            </span>
+          )}
+
+          {Object.keys(filterSignal.value).length > 0 && (
             <button 
               onClick={() => { filterSignal.value = {}; }} 
-              style={{ background: 'none', border: 'none', color: 'var(--primary)', padding: '0', fontSize: '0.9rem', cursor: 'pointer', textDecoration: 'underline' }}
+              style={{ background: 'none', border: 'none', color: 'var(--primary)', padding: '0', fontSize: '0.85rem', cursor: 'pointer', textDecoration: 'underline', marginLeft: 'auto' }}
             >
               Alle Filter löschen
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
       
       <div className="document-list">

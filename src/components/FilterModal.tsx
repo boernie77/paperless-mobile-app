@@ -107,9 +107,6 @@ export function FilterModal({ onClose }: { onClose: () => void }) {
           </button>
         </div>
 
-        <div style={{ marginTop: '2rem', fontSize: '0.7rem', opacity: 0.3, textAlign: 'center' }}>
-           v1.2.0-secure-debug
-        </div>
 
         <div className="filter-section">
           <h3>Tag / Filter</h3>
@@ -143,7 +140,7 @@ export function FilterModal({ onClose }: { onClose: () => void }) {
           <button className="close-button" onClick={onClose}>✕</button>
         </div>
 
-        <div className="modal-content-body" style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <div className="modal-content-body" style={{ flex: '1 1 0', minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.5rem', paddingBottom: '1rem' }}>
           {renderContent()}
         </div>
 

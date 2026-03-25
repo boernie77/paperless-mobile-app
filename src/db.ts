@@ -11,6 +11,7 @@ export interface OfflineDocument {
   document_type: number | null;
   tags: number[];
   blob?: Blob;
+  thumbnailBlob?: Blob;
 }
 
 export interface OfflineMetadata {

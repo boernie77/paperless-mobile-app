@@ -79,17 +79,19 @@ export class PaperlessAPI {
   }
 
   async getThumbnail(id: number): Promise<string> {
+    const blob = await this.getThumbnailBlob(id);
+    return URL.createObjectURL(blob);
+  }
+
+  async getThumbnailBlob(id: number): Promise<Blob> {
     const url = `${this.baseUrl}/api/documents/${id}/thumb/`;
-    // We use standard fetch with Authorization header to get a Blob,
-    // because CapacitorHttp Blob response handling can be tricky to convert to ObjectURL directly.
     const response = await fetch(url, {
       headers: {
         'Authorization': `Token ${this.token}`,
       },
     });
     if (!response.ok) throw new Error('Thumbnail request failed');
-    const blob = await response.blob();
-    return URL.createObjectURL(blob);
+    return response.blob();
   }
 
   async uploadDocument(file: Blob, title: string) {

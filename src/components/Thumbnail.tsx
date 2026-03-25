@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
 import { apiSignal } from '../store.ts';
+import { db } from '../db.ts';
 
 export function Thumbnail({ documentId }: { documentId: number }) {
   const [imgSrc, setImgSrc] = useState<string | null>(null);
@@ -8,9 +9,17 @@ export function Thumbnail({ documentId }: { documentId: number }) {
   useEffect(() => {
     let active = true;
     const fetchThumb = async () => {
-      const api = apiSignal.value;
-      if (!api) return;
       try {
+        // Try local DB first
+        const localDoc = await db.documents.get(documentId);
+        if (localDoc?.thumbnailBlob) {
+          if (active) setImgSrc(URL.createObjectURL(localDoc.thumbnailBlob));
+          return;
+        }
+
+        const api = apiSignal.value;
+        if (!api) return;
+        
         const url = await api.getThumbnail(documentId);
         if (active) setImgSrc(url);
       } catch (err) {

@@ -13,11 +13,21 @@ export function MainMenu({ onClose }: MainMenuProps) {
   const [uploading, setUploading] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [estimatedSizeMb, setEstimatedSizeMb] = useState<number | null>(null);
+  const [offlineCount, setOfflineCount] = useState<number | null>(null);
+  const [autoDownload, setAutoDownload] = useState<boolean>(false);
 
   useEffect(() => {
     let active = true;
-    const fetchCount = async () => {
+    const fetchStats = async () => {
       try {
+        // Count offline docs
+        const count = await db.documents.filter(d => !!d.blob).count();
+        if (active) setOfflineCount(count);
+        
+        // Get auto-download setting
+        const setting = await db.settings.get('auto_download');
+        if (active) setAutoDownload(!!setting?.value);
+
         const api = apiSignal.value;
         if (api) {
           const res = await api.getDocuments({ page_size: '1' });
@@ -27,9 +37,15 @@ export function MainMenu({ onClose }: MainMenuProps) {
         // Fallback or ignore
       }
     };
-    fetchCount();
+    fetchStats();
     return () => { active = false; };
   }, [apiSignal.value]);
+
+  const toggleAutoDownload = async () => {
+    const newValue = !autoDownload;
+    setAutoDownload(newValue);
+    await db.settings.put({ key: 'auto_download', value: newValue });
+  };
 
   const takePhoto = async () => {
     try {
@@ -128,12 +144,23 @@ export function MainMenu({ onClose }: MainMenuProps) {
 
       let count = 0;
       for (const doc of allDocs) {
-        setStatus(`Lade Dokument ${count + 1} von ${allDocs.length}`);
+        setStatus(`Synchronisierung: ${count + 1} von ${allDocs.length}`);
         try {
-           const blob = await api.downloadDocument(doc.id);
-           await db.documents.update(doc.id, { blob });
+           const existing = await db.documents.get(doc.id);
+           if (existing?.blob && existing?.thumbnailBlob) {
+             count++;
+             continue;
+           }
+
+           const [blob, thumbnailBlob] = await Promise.all([
+             api.downloadDocument(doc.id),
+             api.getThumbnailBlob(doc.id)
+           ]);
+           await db.documents.put({ ...doc, blob, thumbnailBlob });
            count++;
-        } catch(e) {}
+        } catch(e) {
+           console.error(`Failed to download doc ${doc.id}`, e);
+        }
       }
       
       setStatus(`Erfolgreich: ${count} Dokumente offline gespeichert.`);
@@ -154,7 +181,7 @@ export function MainMenu({ onClose }: MainMenuProps) {
       
       <div className="filter-section">
         <h3>App Version</h3>
-        <p style={{ margin: 0 }}>v1.3.3 stable</p>
+        <p style={{ margin: 0 }}>v1.3.5 stable</p>
       </div>
 
       <div className="filter-section">
@@ -205,37 +232,55 @@ export function MainMenu({ onClose }: MainMenuProps) {
           <button className="close-button" onClick={onClose} disabled={uploading || downloading}>✕</button>
         </div>
 
-        {view === 'menu' ? (
-          <div className="menu-items">
-            <button className="menu-button" onClick={takePhoto} disabled={uploading || downloading}>
-              <span className="icon">📷</span> Foto aufnehmen
-            </button>
-            <button className="menu-button" onClick={importFile} disabled={uploading || downloading}>
-              <span className="icon">📄</span> Datei importieren
-            </button>
-            <hr className="menu-divider" />
-            <div className="menu-info-block">
-              <button className="menu-button" onClick={() => downloadAll(false)} disabled={uploading || downloading}>
-                <span className="icon">☁️</span> Alle offline verfügbar machen
+        <div style={{ flex: '1 1 0', minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {view === 'menu' ? (
+            <div className="menu-items" style={{ flex: 1 }}>
+              <button className="menu-button" onClick={takePhoto} disabled={uploading || downloading}>
+                <span className="icon">📷</span> Foto aufnehmen
               </button>
-              {Object.keys(filterSignal.value).length > 0 && (
-                <button className="menu-button" onClick={() => downloadAll(true)} disabled={uploading || downloading} style={{ background: 'rgba(59, 130, 246, 0.2)' }}>
-                  <span className="icon">🔍</span> Auswahl laden
+              <button className="menu-button" onClick={importFile} disabled={uploading || downloading}>
+                <span className="icon">📄</span> Datei importieren
+              </button>
+              <hr className="menu-divider" />
+              
+              <div className="menu-info-block">
+                 <div className="menu-button" style={{ background: 'rgba(255, 255, 255, 0.03)', border: 'none', cursor: 'default' }}>
+                   <span className="icon">📂</span> Offline verfügbar: <strong>{offlineCount ?? '...'}</strong>
+                 </div>
+                 <button className="menu-button" onClick={toggleAutoDownload} disabled={uploading || downloading} style={{ justifyContent: 'space-between' }}>
+                   <span style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                     <span className="icon">⚡</span> Autom. Download
+                   </span>
+                   <span style={{ color: autoDownload ? 'var(--primary)' : 'var(--text-dim)', fontWeight: 'bold' }}>
+                     {autoDownload ? 'AN' : 'AUS'}
+                   </span>
+                 </button>
+              </div>
+
+              <hr className="menu-divider" />
+              <div className="menu-info-block">
+                <button className="menu-button" onClick={() => downloadAll(false)} disabled={uploading || downloading}>
+                  <span className="icon">☁️</span> Alle offline verfügbar machen
                 </button>
-              )}
-              <p className="menu-hint">Hinweis: Dies erfordert insgesamt ca. {estimatedSizeMb !== null ? estimatedSizeMb : '?'} MB Speicherplatz auf deinem Gerät.</p>
+                {Object.keys(filterSignal.value).length > 0 && (
+                  <button className="menu-button" onClick={() => downloadAll(true)} disabled={uploading || downloading} style={{ background: 'rgba(59, 130, 246, 0.2)' }}>
+                    <span className="icon">🔍</span> Auswahl laden
+                  </button>
+                )}
+                <p className="menu-hint">Hinweis: Dies erfordert insgesamt ca. {estimatedSizeMb !== null ? estimatedSizeMb : '?'} MB Speicherplatz auf deinem Gerät.</p>
+              </div>
+              
+              <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingBottom: '1rem' }}>
+                 <button className="menu-button" onClick={() => setView('about')} style={{ opacity: 0.7 }}>
+                   <span className="icon">ℹ️</span> Über & Lizenzen
+                 </button>
+                 <button className="menu-button logout-btn" onClick={logout} style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
+                   <span className="icon">🚪</span> Abmelden
+                 </button>
+              </div>
             </div>
-            
-            <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-               <button className="menu-button" onClick={() => setView('about')} style={{ opacity: 0.7 }}>
-                 <span className="icon">ℹ️</span> Über & Lizenzen
-               </button>
-               <button className="menu-button logout-btn" onClick={logout} style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
-                 <span className="icon">🚪</span> Abmelden
-               </button>
-            </div>
-          </div>
-        ) : renderAbout()}
+          ) : renderAbout()}
+        </div>
         
         {status && (
           <div className="menu-status-bar">
