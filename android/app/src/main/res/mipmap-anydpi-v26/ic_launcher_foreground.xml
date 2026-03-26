@@ -5,20 +5,17 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Back page (darker green, offset top-left) -->
-    <path
-        android:fillColor="#16a34a"
-        android:pathData="M25,16 L59,16 L71,28 L71,82 L25,82 Z" />
-    <path
-        android:fillColor="#14532d"
-        android:pathData="M59,16 L71,28 L59,28 Z" />
-
-    <!-- Front page (bright green, offset bottom-right) -->
-    <path
-        android:fillColor="#4ade80"
-        android:pathData="M37,26 L71,26 L83,38 L83,92 L37,92 Z" />
-    <path
-        android:fillColor="#22c55e"
-        android:pathData="M71,26 L83,38 L71,38 Z" />
+    <!-- Paperless-ngx leaf logo, scaled and centered in safe zone -->
+    <group
+        android:pivotX="0"
+        android:pivotY="0"
+        android:scaleX="0.0737"
+        android:scaleY="0.0737"
+        android:translateX="25.81"
+        android:translateY="24.01">
+        <path
+            android:fillColor="#22c55e"
+            android:pathData="M 231,798 C 227,779 219,741 218,741 49,640 69,465 125,365 c 12,126 235,213 105,367 -1,2 6,26 12,48 26,-44 65,-97 63,-102 C 145,288 645,258 749,16 c 47,234 -24,596 -426,688 -2,1 -73,126 -76,127 0,-2 -30,-1 -26,-11 2,-6 6,-14 10,-22 z M 330,625 C 267,476 452,312 544,271 356,439 324,564 330,625 Z m -104,79 c 51,-59 -9,-160 -45,-193 61,105 57,166 45,193 z" />
+    </group>
 
 </vector>
