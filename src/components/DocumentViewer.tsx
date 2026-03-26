@@ -10,9 +10,10 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 interface DocumentViewerProps {
   document: any;
   onClose: () => void;
+  searchTerm?: string;
 }
 
-export function DocumentViewer({ document, onClose }: DocumentViewerProps) {
+export function DocumentViewer({ document, onClose, searchTerm }: DocumentViewerProps) {
   const [contentUrl, setContentUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState('Lade Dokument...');
@@ -125,7 +126,30 @@ export function DocumentViewer({ document, onClose }: DocumentViewerProps) {
           
           // Render in background
           await page.render(renderContext).promise;
-          
+
+          // Highlight search term on canvas
+          if (searchTerm && searchTerm.trim()) {
+            const term = searchTerm.trim().toLowerCase();
+            const textContent = await page.getTextContent();
+            const ctx = canvas.getContext('2d')!;
+            const [a, b, c, d, e, f] = (viewport as any).transform;
+
+            ctx.save();
+            ctx.fillStyle = 'rgba(255, 210, 0, 0.45)';
+            for (const item of (textContent.items as any[])) {
+              if (!item.str || !item.str.toLowerCase().includes(term)) continue;
+              const tx = item.transform[4];
+              const ty = item.transform[5];
+              // Apply viewport transform (PDF y-up → canvas y-down)
+              const cx = a * tx + c * ty + e;
+              const cy = b * tx + d * ty + f;
+              const cw = item.width * viewport.scale;
+              const ch = item.height * viewport.scale;
+              ctx.fillRect(cx, cy - ch, cw, ch);
+            }
+            ctx.restore();
+          }
+
           // Hide loading completely after first page is ready
           if (pageNum === 1 && active) setLoading(false);
         }

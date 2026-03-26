@@ -327,7 +327,7 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
   );
 
   if (selectedDoc) {
-    return <DocumentViewer document={selectedDoc} onClose={() => setSelectedDoc(null)} />;
+    return <DocumentViewer document={selectedDoc} onClose={() => setSelectedDoc(null)} searchTerm={search} />;
   }
 
   if (loading && page === 1) return <div className="loading">Hole Dokumente...</div>;
