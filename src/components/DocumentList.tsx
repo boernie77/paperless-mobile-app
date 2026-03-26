@@ -20,9 +20,18 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
 
   const [search, setSearch] = useState('');
   const [ordering, setOrdering] = useState('-created');
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>(() =>
+    (localStorage.getItem('viewMode') as 'list' | 'grid') || 'list'
+  );
   const [selectedDoc, setSelectedDoc] = useState<any>(null);
   const [showSortModal, setShowSortModal] = useState(false);
   const [autoDownload, setAutoDownload] = useState(false);
+
+  const toggleViewMode = () => {
+    const next = viewMode === 'list' ? 'grid' : 'list';
+    setViewMode(next);
+    localStorage.setItem('viewMode', next);
+  };
 
   const tags = (meta.tags as any);
   const correspondents = (meta.correspondents as any);
@@ -319,13 +328,21 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
     <div className="document-container">
       <div className="search-bar" style={{ display: 'flex', gap: '0.5rem', flexDirection: 'column' }}>
         <div style={{ display: 'flex', gap: '0.5rem', width: '100%', marginBottom: '0.5rem' }}>
-          <input 
-            type="search" 
-            placeholder="Suchen..." 
+          <input
+            type="search"
+            placeholder="Suchen..."
             onInput={(e) => setSearch((e.target as HTMLInputElement).value)}
             style={{ flex: 1, padding: '0.9rem 1.2rem' }}
           />
-          <button 
+          <button
+            onClick={toggleViewMode}
+            className="filter-input"
+            style={{ width: 'auto', background: 'var(--surface)', cursor: 'pointer', padding: '0.9rem 1rem', display: 'flex', alignItems: 'center', fontSize: '1.2rem' }}
+            title={viewMode === 'list' ? 'Kachelansicht' : 'Listenansicht'}
+          >
+            {viewMode === 'list' ? '⊞' : '☰'}
+          </button>
+          <button
             onClick={() => setShowSortModal(true)}
             className="filter-input"
             style={{ width: 'auto', background: 'var(--surface)', cursor: 'pointer', padding: '0.9rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap', fontSize: '1.2rem' }}
@@ -375,12 +392,12 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
       </div>
 
       {error && !loading && <div style={{ padding: '1rem', color: '#ef4444', textAlign: 'center' }}>{error}</div>}
-      
-      <div className="document-list">
-        {filteredDocs.length === 0 && !loading ? (
-          <p className="empty-msg">Keine Dokumente gefunden.</p>
-        ) : (
-          filteredDocs.map(doc => (
+
+      {filteredDocs.length === 0 && !loading ? (
+        <p className="empty-msg">Keine Dokumente gefunden.</p>
+      ) : viewMode === 'list' ? (
+        <div className="document-list">
+          {filteredDocs.map(doc => (
             <div key={doc.id} className="doc-card" onClick={() => setSelectedDoc(doc)}>
               <div className="doc-thumbnail-col">
                 <Thumbnail documentId={doc.id} />
@@ -399,8 +416,8 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
                 </div>
               </div>
               <div className="doc-actions">
-                <button 
-                  onClick={(e) => { e.stopPropagation(); toggleOffline(doc); }} 
+                <button
+                  onClick={(e) => { e.stopPropagation(); toggleOffline(doc); }}
                   className="text-button small"
                   title="Offline speichern"
                 >
@@ -408,16 +425,53 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
                 </button>
               </div>
             </div>
-          ))
-        )}
-        <div ref={lastElementRef} style={{ height: '20px', margin: '20px 0' }} />
-        
-        {isLoadingMore && (
-           <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-dim)' }}>
-             Lade weitere Dokumente...
-           </div>
-        )}
-      </div>
+          ))}
+          <div ref={lastElementRef} style={{ height: '20px', margin: '20px 0' }} />
+          {isLoadingMore && (
+            <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-dim)' }}>
+              Lade weitere Dokumente...
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="document-grid">
+          {filteredDocs.map(doc => (
+            <div key={doc.id} className="doc-tile" onClick={() => setSelectedDoc(doc)}>
+              <div className="doc-tile-thumbnail">
+                <Thumbnail documentId={doc.id} />
+                {(doc.is_offline === 1 || doc.blob) && <div className="offline-badge">✓</div>}
+              </div>
+              <div className="doc-tile-info">
+                <h3>{doc.title}</h3>
+                <p className="doc-date">
+                  {new Date(doc.created).toLocaleDateString('de-DE')}
+                  {doc.correspondent && <span className="doc-corr"> • {correspondents[doc.correspondent]}</span>}
+                </p>
+                <div className="doc-tile-footer">
+                  <div className="doc-tags" style={{ flex: 1 }}>
+                    {doc.tags?.slice(0, 2).map((tId: number) => (
+                      <span key={tId} className="tag-pill">{tags[tId] || `Tag ${tId}`}</span>
+                    ))}
+                  </div>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); toggleOffline(doc); }}
+                    className="text-button small"
+                    title="Offline speichern"
+                  >
+                    {(doc.is_offline === 1 || doc.blob) ? '✅' : '📥'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+          <div ref={lastElementRef} style={{ height: '20px', gridColumn: '1 / -1', margin: '20px 0' }} />
+          {isLoadingMore && (
+            <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-dim)', gridColumn: '1 / -1' }}>
+              Lade weitere Dokumente...
+            </div>
+          )}
+        </div>
+      )}
 
       {showSortModal && (
         <div className="modal-overlay" onClick={() => setShowSortModal(false)}>
