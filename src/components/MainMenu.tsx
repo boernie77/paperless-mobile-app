@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'preact/hooks';
 import { Camera, CameraResultType } from '@capacitor/camera';
-import { authState, apiSignal, logout as logoutStore, filterSignal, failedDocsSignal, duplicateDocsSignal } from '../store.ts';
+import { apiSignal, filterSignal, failedDocsSignal, duplicateDocsSignal } from '../store.ts';
 import { db } from '../db.ts';
 
 interface MainMenuProps {
@@ -12,7 +12,7 @@ export function MainMenu({ onClose }: MainMenuProps) {
   const [failedDocs, setFailedDocs] = useState<any[]>([]);
   const [duplicateDocs, setDuplicateDocs] = useState<any[]>([]);
   const [syncReport, setSyncReport] = useState<any>(null);
-  const [view, setView] = useState<'menu' | 'about' | 'report'>('menu');
+  const [view, setView] = useState<'menu' | 'report'>('menu');
   const [status, setStatus] = useState('');
   const [uploading, setUploading] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -286,50 +286,13 @@ export function MainMenu({ onClose }: MainMenuProps) {
     </div>
   );
 
-  const renderAbout = () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', animation: 'fadeIn 0.3s', paddingBottom: '2rem' }}>
-      <button className="header-button" onClick={() => setView('menu')}>← Zurück</button>
-
-      <div className="filter-section">
-        <h3>Lizenzen</h3>
-        <p style={{ margin: 0, fontSize: '0.85rem', lineHeight: '1.4' }}>
-          Diese App basiert auf Open-Source-Software:<br/>
-          • Paperless-ngx Logo (GPLv3)<br/>
-          • Preact & Signals (MIT)<br/>
-          • Capacitor (MIT) & Plugins (MIT/ISC)<br/>
-          • PDF.js (Apache 2.0)<br/>
-          • Dexie.js (Apache 2.0)<br/>
-          • Lucide Icons (ISC)
-        </p>
-      </div>
-
-      <div className="filter-section">
-        <h3>Impressum</h3>
-        <p style={{ margin: 0, fontSize: '0.85rem', lineHeight: '1.4' }}>
-          <strong>Verantwortlich gemäß § 5 TMG:</strong><br/>
-          Christian Bernauer<br/>
-          Dianastr. 2b<br/>
-          90547 Stein<br/>
-          E-Mail: christian@bernauer24.com
-        </p>
-      </div>
-
-      <div className="filter-section">
-        <h3>Datenschutz</h3>
-        <p style={{ margin: 0, fontSize: '0.85rem', lineHeight: '1.4' }}>
-          Die Betreiber dieser App nehmen den Schutz Ihrer persönlichen Daten sehr ernst. Wir behandeln Ihre personenbezogenen Daten vertraulich und entsprechend der gesetzlichen Datenschutzvorschriften sowie dieser Datenschutzerklärung.
-        </p>
-      </div>
-    </div>
-  );
-
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="main-menu" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <h2>
-              {view === 'menu' ? 'Menü' : (view === 'about' ? 'Über & Lizenzen' : 'Synchronisierungs-Bericht')}
+              {view === 'menu' ? 'Menü' : 'Synchronisierungs-Bericht'}
             </h2>
             <span style={{ fontSize: '0.8rem', opacity: 0.5, marginTop: '0.2rem' }}>v1.0.1</span>
           </div>
@@ -376,16 +339,8 @@ export function MainMenu({ onClose }: MainMenuProps) {
                 </button>
                 <p className="menu-hint">Hinweis: Dies erfordert insgesamt ca. {estimatedSizeMb !== null ? estimatedSizeMb : '?'} MB Speicherplatz auf deinem Gerät.</p>
               </div>
-                            <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingBottom: '1rem' }}>
-                  <button className="menu-button" onClick={() => setView('about')} style={{ opacity: 0.7 }}>
-                    <span className="icon">ℹ️</span> Über & Lizenzen
-                  </button>
-                  <button className="menu-button logout-btn" onClick={logoutStore} style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
-                    <span className="icon">🚪</span> Abmelden
-                  </button>
-               </div>
-            </div>
-          ) : (view === 'about' ? renderAbout() : renderSyncReport())}
+                        </div>
+          ) : renderSyncReport()}
         </div>
         
         {status && (

@@ -37,3 +37,9 @@ export const filterSignal = signal<Record<string, any>>({});
 export const failedDocsSignal = signal<{id: number, title: string}[] | null>(null);
 export const duplicateDocsSignal = signal<{id: number, title: string}[] | null>(null);
 
+// Owner/user filter: null = show all, number[] = show only these user IDs
+const _savedOwnerFilter = localStorage.getItem('owner_filter');
+export const ownerFilterSignal = signal<number[] | null>(
+  _savedOwnerFilter ? JSON.parse(_savedOwnerFilter) : null
+);
+

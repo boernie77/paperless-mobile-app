@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'preact/hooks';
-import { apiSignal, filterSignal, failedDocsSignal, duplicateDocsSignal } from '../store.ts';
+import { apiSignal, filterSignal, failedDocsSignal, duplicateDocsSignal, ownerFilterSignal } from '../store.ts';
 import { db } from '../db.ts';
 import { Thumbnail } from './Thumbnail.tsx';
 import { DocumentViewer } from './DocumentViewer.tsx';
@@ -186,7 +186,11 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
           params['id__in'] = activeDiagnostic.map(d => d.id).join(',');
         } else {
           // If offline docs exist, prefer them for instant smooth display
-          const allOfflineDocs = await db.documents.where('is_offline').equals(1).toArray();
+          let allOfflineDocs = await db.documents.where('is_offline').equals(1).toArray();
+          const ownerFilter = ownerFilterSignal.value;
+          if (ownerFilter && ownerFilter.length > 0) {
+            allOfflineDocs = allOfflineDocs.filter((d: any) => ownerFilter.includes(d.owner));
+          }
           if (allOfflineDocs.length > 0) {
             const filtered = applyLocalFilters(allOfflineDocs);
             setDocs(sortOfflineDocs(filtered));
@@ -201,6 +205,10 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
           Object.entries(filters).forEach(([k, v]) => {
              if (v !== undefined && v !== null && v !== '') params[k] = String(v);
           });
+
+          if (ownerFilter && ownerFilter.length > 0) {
+            params['owner__id__in'] = ownerFilter.join(',');
+          }
 
           if (inboxOnly) {
              const inboxTagId = Object.keys(meta.tags).find(k =>

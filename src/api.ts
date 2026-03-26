@@ -134,6 +134,10 @@ export class PaperlessAPI {
     return response.json();
   }
 
+  async getUsers() {
+    return this.request('users/?page_size=1000');
+  }
+
   async downloadDocument(id: number): Promise<Blob> {
     const url = `${this.baseUrl}/api/documents/${id}/download/`;
     const response = await fetch(url, {
