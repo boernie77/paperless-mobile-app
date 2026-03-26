@@ -14,9 +14,9 @@ export function Settings() {
   const [showImprint, setShowImprint] = useState(false);
   const [users, setUsers] = useState<{ id: number; username: string; first_name?: string; last_name?: string }[]>([]);
   const [selectedOwners, setSelectedOwners] = useState<number[] | null>(ownerFilterSignal.value);
+  const [showOwnerPopup, setShowOwnerPopup] = useState(false);
 
   useEffect(() => {
-    // Calculate storage
     const calc = async () => {
       const docs = await db.documents.where('is_offline').equals(1).toArray();
       let totalBytes = 0;
@@ -28,7 +28,6 @@ export function Settings() {
     };
     calc();
 
-    // Fetch users
     const fetchUsers = async () => {
       const api = apiSignal.value;
       if (!api) return;
@@ -42,12 +41,10 @@ export function Settings() {
 
   const toggleOwner = (id: number) => {
     setSelectedOwners(prev => {
-      // null = all selected → start deselecting
       const current = prev ?? users.map(u => u.id);
       const next = current.includes(id)
         ? current.filter(x => x !== id)
         : [...current, id];
-      // if all selected again → go back to null (no filter)
       const result = next.length === users.length ? null : next;
       ownerFilterSignal.value = result;
       if (result === null) localStorage.removeItem('owner_filter');
@@ -59,40 +56,31 @@ export function Settings() {
   const isOwnerSelected = (id: number) =>
     selectedOwners === null || selectedOwners.includes(id);
 
+  const activeFilterLabel = selectedOwners === null
+    ? 'Alle Benutzer'
+    : `${selectedOwners.length} von ${users.length} ausgewählt`;
+
   const reportBug = () => {
     window.open('https://github.com/boernie77/paperless-mobile-app/issues/new', '_system');
+  };
+
+  const openHomepage = () => {
+    window.open('https://byboernie.de', '_system');
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.25rem 0 5rem 0' }}>
 
-      {/* View / User filter */}
+      {/* View / User filter — button opens popup */}
       {users.length > 0 && (
         <section className="settings-section">
           <h2 className="settings-heading">Ansicht</h2>
-          <div className="settings-card">
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginBottom: '0.5rem' }}>
-              Dokumente folgender Benutzer anzeigen:
-            </p>
-            {users.map(u => (
-              <label key={u.id} className="settings-toggle-row">
-                <span>
-                  {u.first_name && u.last_name
-                    ? `${u.first_name} ${u.last_name}`
-                    : u.username}
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginLeft: '0.4rem' }}>
-                    @{u.username}
-                  </span>
-                </span>
-                <input
-                  type="checkbox"
-                  className="settings-checkbox"
-                  checked={isOwnerSelected(u.id)}
-                  onChange={() => toggleOwner(u.id)}
-                />
-              </label>
-            ))}
-          </div>
+          <button className="settings-button" onClick={() => setShowOwnerPopup(true)}>
+            <span className="settings-icon">👤</span>
+            <span style={{ flex: 1 }}>Benutzerfilter</span>
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-dim)', marginRight: '0.4rem' }}>{activeFilterLabel}</span>
+            <span className="settings-chevron">›</span>
+          </button>
         </section>
       )}
 
@@ -129,6 +117,17 @@ export function Settings() {
             <span>Version</span>
             <span style={{ color: 'var(--text-dim)' }}>1.0.1</span>
           </div>
+
+          <div style={{ fontSize: '0.82rem', lineHeight: '1.6', color: 'var(--text-dim)', padding: '0.25rem 0' }}>
+            Diese App ist eine privat entwickelte, inoffizielle Anwendung und steht in keiner
+            Verbindung zu Paperless-ngx oder dessen Entwicklern. Alle Rechte an Paperless-ngx
+            liegen bei den jeweiligen Urhebern.
+          </div>
+
+          <button className="settings-button-inline" onClick={openHomepage}>
+            <span>byboernie.de</span>
+            <span className="settings-chevron">›</span>
+          </button>
 
           <button className="settings-button-inline" onClick={() => setShowLicenses(v => !v)}>
             <span>Open-Source-Lizenzen</span>
@@ -181,6 +180,39 @@ export function Settings() {
           <span style={{ flex: 1 }}>Abmelden</span>
         </button>
       </section>
+
+      {/* Owner filter popup */}
+      {showOwnerPopup && (
+        <div className="popup-overlay" onClick={() => setShowOwnerPopup(false)}>
+          <div className="popup-sheet" onClick={e => e.stopPropagation()}>
+            <div className="popup-header">
+              <span className="popup-title">Benutzerfilter</span>
+              <button className="popup-close" onClick={() => setShowOwnerPopup(false)}>✕</button>
+            </div>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-dim)', margin: '0 0 0.75rem 0' }}>
+              Dokumente folgender Benutzer anzeigen:
+            </p>
+            {users.map(u => (
+              <label key={u.id} className="settings-toggle-row">
+                <span>
+                  {u.first_name && u.last_name
+                    ? `${u.first_name} ${u.last_name}`
+                    : u.username}
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginLeft: '0.4rem' }}>
+                    @{u.username}
+                  </span>
+                </span>
+                <input
+                  type="checkbox"
+                  className="settings-checkbox"
+                  checked={isOwnerSelected(u.id)}
+                  onChange={() => toggleOwner(u.id)}
+                />
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
 
     </div>
   );

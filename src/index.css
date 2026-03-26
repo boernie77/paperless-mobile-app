@@ -530,6 +530,44 @@ main { flex: 1; padding: 1rem; overflow-y: auto; -webkit-overflow-scrolling: tou
   flex-shrink: 0;
 }
 
+/* Owner filter popup */
+.popup-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+}
+.popup-sheet {
+  background: var(--surface);
+  border-radius: 20px 20px 0 0;
+  padding: 1.25rem 1rem 2.5rem;
+  width: 100%;
+  max-height: 70vh;
+  overflow-y: auto;
+  box-shadow: 0 -4px 24px rgba(0,0,0,0.25);
+}
+.popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+.popup-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.popup-close {
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+}
+
 /* Grid / Tile view */
 .document-grid {
   display: grid;
