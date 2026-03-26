@@ -1,4 +1,4 @@
-# Less Paper – Inoffizielle Paperless-ngx App für Android
+# Paperless Mobile – Inoffizielle Paperless-ngx App für Android
 
 Eine privat entwickelte Android-App für [Paperless-ngx](https://github.com/paperless-ngx/paperless-ngx), die das Verwalten und Lesen deiner Dokumente unterwegs ermöglicht.
 
