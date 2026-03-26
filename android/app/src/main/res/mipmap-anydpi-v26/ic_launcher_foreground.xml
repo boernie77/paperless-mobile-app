@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Back page (darker green, offset top-left) -->
+    <path
+        android:fillColor="#16a34a"
+        android:pathData="M25,16 L59,16 L71,28 L71,82 L25,82 Z" />
+    <path
+        android:fillColor="#14532d"
+        android:pathData="M59,16 L71,28 L59,28 Z" />
+
+    <!-- Front page (bright green, offset bottom-right) -->
+    <path
+        android:fillColor="#4ade80"
+        android:pathData="M37,26 L71,26 L83,38 L83,92 L37,92 Z" />
+    <path
+        android:fillColor="#22c55e"
+        android:pathData="M71,26 L83,38 L71,38 Z" />
+
+</vector>
