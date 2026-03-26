@@ -16,8 +16,43 @@ export function DocumentViewer({ document, onClose }: DocumentViewerProps) {
   const [contentUrl, setContentUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState('Lade Dokument...');
-  
+  const [zoomScale, setZoomScale] = useState(1);
+
   const containerRef = useRef<HTMLDivElement>(null);
+  const pinchRef = useRef<{ distance: number; scale: number } | null>(null);
+  const lastTapRef = useRef(0);
+
+  const getPinchDistance = (e: TouchEvent) => {
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
+  const handleTouchStart = (e: TouchEvent) => {
+    if (e.touches.length === 2) {
+      pinchRef.current = { distance: getPinchDistance(e), scale: zoomScale };
+    }
+  };
+
+  const handleTouchMove = (e: TouchEvent) => {
+    if (e.touches.length === 2 && pinchRef.current) {
+      e.preventDefault();
+      const ratio = getPinchDistance(e) / pinchRef.current.distance;
+      setZoomScale(Math.min(Math.max(pinchRef.current.scale * ratio, 0.75), 4));
+    }
+  };
+
+  const handleTouchEnd = (e: TouchEvent) => {
+    if (e.touches.length < 2) {
+      pinchRef.current = null;
+    }
+    // Double-tap resets zoom
+    if (e.changedTouches.length === 1) {
+      const now = Date.now();
+      if (now - lastTapRef.current < 300) setZoomScale(1);
+      lastTapRef.current = now;
+    }
+  };
 
   useEffect(() => {
     let active = true;
@@ -113,20 +148,45 @@ export function DocumentViewer({ document, onClose }: DocumentViewerProps) {
         <button className="header-button" onClick={onClose}>← Zurück</button>
         <span className="viewer-title">{document.title}</span>
       </div>
-      <div className="viewer-content" style={{ flexDirection: 'column', backgroundColor: '#f1f5f9', overflowY: 'auto', padding: '1rem', alignItems: 'center', justifyContent: 'flex-start' }}>
+      <div
+        className="viewer-content"
+        style={{ flexDirection: 'column', backgroundColor: '#f1f5f9', overflowY: 'auto', overflowX: zoomScale > 1 ? 'auto' : 'hidden', padding: '1rem', alignItems: 'center', justifyContent: 'flex-start' }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
         {loading && <div className="loading" style={{ margin: 'auto', color: 'var(--text-dim)' }}>{status}</div>}
-        
+
         {/* PDF Container */}
-        <div ref={containerRef} style={{ width: '100%', maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div
+          ref={containerRef}
+          style={{
+            width: '100%',
+            maxWidth: '800px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1rem',
+            transform: `scale(${zoomScale})`,
+            transformOrigin: 'top center',
+            marginBottom: zoomScale > 1 ? `${(zoomScale - 1) * 100}%` : 0,
+          }}
+        >
           {/* Canvases will be injected here */}
         </div>
 
         {/* Fallback Image viewer */}
         {!loading && contentUrl && (
-          <img 
-            src={contentUrl} 
-            alt={document.title} 
-            style={{ maxWidth: '100%', borderRadius: '4px', boxShadow: '0 5px 15px rgba(0,0,0,0.1)' }} 
+          <img
+            src={contentUrl}
+            alt={document.title}
+            style={{
+              maxWidth: '100%',
+              borderRadius: '4px',
+              boxShadow: '0 5px 15px rgba(0,0,0,0.1)',
+              transform: `scale(${zoomScale})`,
+              transformOrigin: 'top center',
+              marginBottom: zoomScale > 1 ? `${(zoomScale - 1) * 100}%` : 0,
+            }}
           />
         )}
       </div>

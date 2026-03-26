@@ -416,13 +416,19 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
                 </div>
               </div>
               <div className="doc-actions">
-                <button
-                  onClick={(e) => { e.stopPropagation(); toggleOffline(doc); }}
-                  className="text-button small"
-                  title="Offline speichern"
-                >
-                  {(doc.is_offline === 1 || doc.blob) ? '✅' : '📥'}
-                </button>
+                {(doc.is_offline === 1 || doc.blob) ? (
+                  doc.tags?.[2] != null && (
+                    <span className="tag-pill">{tags[doc.tags[2]] || `Tag ${doc.tags[2]}`}</span>
+                  )
+                ) : (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); toggleOffline(doc); }}
+                    className="text-button small"
+                    title="Offline speichern"
+                  >
+                    📥
+                  </button>
+                )}
               </div>
             </div>
           ))}
@@ -449,17 +455,19 @@ export function DocumentList({ inboxOnly = false }: DocumentListProps) {
                 </p>
                 <div className="doc-tile-footer">
                   <div className="doc-tags" style={{ flex: 1 }}>
-                    {doc.tags?.slice(0, 2).map((tId: number) => (
+                    {doc.tags?.slice(0, (doc.is_offline === 1 || doc.blob) ? 3 : 2).map((tId: number) => (
                       <span key={tId} className="tag-pill">{tags[tId] || `Tag ${tId}`}</span>
                     ))}
                   </div>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); toggleOffline(doc); }}
-                    className="text-button small"
-                    title="Offline speichern"
-                  >
-                    {(doc.is_offline === 1 || doc.blob) ? '✅' : '📥'}
-                  </button>
+                  {!(doc.is_offline === 1 || doc.blob) && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); toggleOffline(doc); }}
+                      className="text-button small"
+                      title="Offline speichern"
+                    >
+                      📥
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
