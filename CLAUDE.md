@@ -6,7 +6,7 @@
 **Zweck:** Inoffizielle Paperless-ngx Client-App für Android
 **Entwickler:** Christian Bernauer – [byboernie.de](https://byboernie.de)
 **GitHub:** https://github.com/boernie77/paperless-mobile-app
-**Aktuelle Version:** 1.0.1 (versionCode 23)
+**Aktuelle Version:** 1.0.1 (versionCode 24)
 
 ## Technik-Stack
 | Technologie | Zweck |
@@ -28,7 +28,7 @@
 | `src/components/DocumentViewer.tsx` | PDF-Viewer mit Pinch-Zoom, Pan, Doppeltipp-Reset, Suchbegriff-Highlighting |
 | `src/components/MainMenu.tsx` | Seitenmenü: Sync, Filter-Chips |
 | `src/components/Settings.tsx` | Einstellungsseite: Benutzerfilter-Popup, Speicher, Fehler melden, Über, Abmelden |
-| `src/index.css` | Alle Styles inkl. Dark-Mode-Variablen |
+| `src/index.css` | Alle Styles – helles Material-Design (Variante A, Stand v24) |
 | `android/app/build.gradle` | versionCode und versionName |
 | `android/app/src/main/res/mipmap-anydpi-v26/` | Adaptive Icon XMLs (Blatt-Logo) |
 | `resources/icon-only.svg` | Originales Paperless-ngx Blatt-Logo (Quelle für Android-Icon) |
@@ -70,6 +70,19 @@ git add ... && git commit && git push
 - Sprache im Code: Englisch; UI-Texte: Deutsch
 - Commit-Format: `v1.0.1 (XX): Kurzbeschreibung`
 - Nach jeder Änderung: `npm run build` → `npx cap sync android` → versionCode +1 → `./gradlew bundleRelease` → commit + push
+
+## Design
+- **Aktuelles Design (v24):** Helles Material-Design (Variante A)
+  - Hintergrund `#f1f5f9`, Karten weiß, Primary `#22c55e` (Paperless-Grün)
+  - Keine Glassmorphism-Effekte, keine Gradienten – klare Schatten
+  - Tags & aktive Nav-Items: grüne Hinterlegung `#dcfce7`
+- **Verworfene Varianten:** Dark Neon/Glassmorphism (vor v24) – wurde als "Spiele-App"-Look empfunden
+- **Alternativoptionen (nicht umgesetzt):** B = Dark Profi (GitHub-Style), C = Hell mit dunklem Header
+
+## Android Studio
+- Projekt-Ordner für Android Studio: `android/` (nicht das Root-Verzeichnis)
+- `open -a "Android Studio"` öffnet ggf. das zuletzt geöffnete Projekt – manuell via **File → Open** den `android/`-Ordner wählen
+- Nach dem Öffnen erst Gradle-Sync abwarten, bevor Run-Konfiguration funktioniert (Modul `app` erscheint erst nach Sync)
 
 ## Bekannte Einschränkungen
 - Suchbegriff-Highlighting im PDF: funktioniert nicht, wenn ein Begriff über zwei Text-Chunks aufgeteilt ist
